@@ -24,4 +24,3 @@ jobs:
       - run: python -m ruff format --check backend scripts tests
       - run: python -m pytest -q --cov=backend --cov-branch --cov-fail-under=90
       - run: python scripts/smoke_http.py
-

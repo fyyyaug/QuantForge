@@ -9,4 +9,3 @@ The explicit dates define a synthetic calendar. Weekdays may coincide with real 
 clean_momentum and leaky_next_close intentionally contain identical price bytes. Leakage is a property of the decision dependency, not of a file containing future rows. Only the privileged diagnostic endpoint enables the future-close transformation; normal research on either dataset uses a legal trailing feature.
 
 missing_open, duplicate_sessions, and invalid_ohlc are malformed fixtures for integrity tests. Their manifests pin their malformed contents so that integrity errors are distinguished from byte-hash corruption.
-
