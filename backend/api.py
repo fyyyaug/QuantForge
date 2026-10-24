@@ -11,7 +11,8 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Header, Query
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import Field, ValidationError
 
 from .canonical import plain
@@ -22,7 +23,39 @@ from .service import ResearchService
 from .store import Store
 
 DEFAULT_FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
+DEFAULT_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 logger = logging.getLogger(__name__)
+
+
+class SecurityHeadersMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        async def secured(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                headers.extend(
+                    [
+                        (b"x-content-type-options", b"nosniff"),
+                        (b"referrer-policy", b"no-referrer"),
+                        (b"cache-control", b"no-store"),
+                        (b"x-frame-options", b"DENY"),
+                    ]
+                )
+                # Swagger's separate documentation page needs its own CDN assets.
+                # The research workspace uses only same-origin external JS/CSS.
+                if not scope.get("path", "").startswith(("/docs", "/redoc")):
+                    headers.append(
+                        (
+                            b"content-security-policy",
+                            b"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+                        )
+                    )
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, secured)
 
 
 class BodyLimitMiddleware:
@@ -51,7 +84,12 @@ class BodyLimitMiddleware:
         iterator = iter(messages)
 
         async def replay():
-            return next(iterator, {"type": "http.request", "body": b"", "more_body": False})
+            try:
+                return next(iterator)
+            except StopIteration:
+                # Streaming/static responses listen for disconnects. Replaying
+                # endless empty request messages would starve their event loop.
+                return await receive()
 
         await self.app(scope, replay, send)
 
@@ -132,6 +170,7 @@ def create_app(data_dir: Path | None = None, tokens: dict[str, str] | None = Non
 
     app = FastAPI(title="QuantForge Foundation API", version="0.1.0", lifespan=lifespan)
     app.add_middleware(BodyLimitMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     def workspace(authorization: Annotated[str | None, Header()] = None):
         bearer = authorization[7:] if authorization and authorization.startswith("Bearer ") else ""
@@ -179,6 +218,10 @@ def create_app(data_dir: Path | None = None, tokens: dict[str, str] | None = Non
     @app.get("/api/datasets")
     def datasets(owner: W):
         return plain(service().catalog.list())
+
+    @app.get("/api/runs")
+    def history(owner: W, limit: int = Query(50, ge=1, le=100)):
+        return service().history(owner, limit)
 
     @app.post("/api/research/plans", status_code=201)
     def create_plan(body: PlanRequest, owner: W):
@@ -256,5 +299,12 @@ def create_app(data_dir: Path | None = None, tokens: dict[str, str] | None = Non
             service().store.transition(owner, run_id, "CANCELLED")
             return service().view(owner, run_id)
         raise ResearchError("STATE_CONFLICT", "Only queued runs can be cancelled in this foundation", 409)
+
+    if DEFAULT_FRONTEND.is_dir():
+        app.mount("/assets", StaticFiles(directory=DEFAULT_FRONTEND / "assets"), name="workspace-assets")
+
+        @app.get("/", include_in_schema=False)
+        def workspace_page():
+            return FileResponse(DEFAULT_FRONTEND / "index.html")
 
     return app

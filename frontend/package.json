@@ -1,0 +1,13 @@
+{
+  "name": "quantforge-workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "format:check": "prettier --check \"assets/*.{js,css,svg}\" index.html \"tests/*.js\" package.json",
+    "format": "prettier --write \"assets/*.{js,css,svg}\" index.html \"tests/*.js\" package.json"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10"
+  }
+}

@@ -1,20 +1,21 @@
-# Backend Foundation Verification Report
+# QuantForge Verification Report
 
 Date: October 24, 2026
 
 ## Result
 
-The final local regression run passed **87 tests** with no warnings. The suite ran on Windows with Python 3.11.0 and the pinned packages in requirements.lock.
+The integrated workspace regression passed **90 backend tests** with no warnings, plus **6 frontend presentation tests**. Backend tests ran on Windows with Python 3.11.0 and the pinned packages in requirements.lock. Frontend checks use Node.js; the bundled Node 24 runtime was also used for the initial presentation tests.
 
 | Check | Observed result |
 | --- | --- |
-| pytest regression | 87 passed in 4.26 seconds |
+| pytest regression | 90 passed in 4.36 seconds |
+| Frontend presentation tests | 6 passed |
 | Combined statement/branch coverage | 94.82% (terminal rounded display: 95%) |
 | Engine coverage | 100% of measured engine statements and branches |
 | Audit coverage | 100% of measured audit statements and branches |
 | Real localhost HTTP smoke | Passed |
 | Ruff static checks | Passed |
-| Ruff formatting check | 19 files already formatted |
+| Python and frontend formatting | Ruff and Prettier checks passed |
 | Python compileall | Passed |
 | pip dependency consistency | No broken requirements found |
 
@@ -81,7 +82,7 @@ The CI workflow configures Windows/Linux and Python 3.11/3.12. This report descr
 
 ## Remaining limits
 
-No tests establish correctness for real market calendars, adjusted historical prices, market liquidity, multi-asset portfolios, production identity, public deployment, a language-model provider, or a durable multi-process worker system. Those features are not implemented.
+No tests establish correctness for real market calendars, adjusted historical prices, market liquidity, multi-asset portfolios, production identity, public deployment, a language-model provider, or a durable multi-process worker system. Those features are not implemented. [Workspace verification notes](WORKSPACE.md) describe browser checks, the static-response replay fix, and the exact comparison of a downloaded report against its saved server artifact.
 
 The single-process service does not enforce a hard CPU kill timeout. Deployment recovery marks interrupted jobs failed rather than resuming them. Non-queued cancellation is unsupported. Artifact hashes detect content changes against stored hashes but are not signatures protecting against a database administrator.
 

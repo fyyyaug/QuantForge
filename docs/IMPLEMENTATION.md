@@ -29,7 +29,7 @@ The planner, runner, auditor, correction planner, and report writer are bounded 
 - Availability is derived from the fixture's declared UTC publication policy. Inputs must be strictly earlier than decisions. Equal-boundary events without finer ordering are rejected conservatively.
 - The source tree hash and dependency-lock hash provide implementation fingerprints; a Git commit can be supplied by the surrounding checkout. Artifacts do not yet contain a separately injected Git commit identifier.
 - There is a 64 KiB request body bound, 5 MiB dataset bound, 10,000-row bound, parameter precision/range checks, and no arbitrary uploads. Hard worker CPU/time isolation and a durable job system remain future work. Do not expose this server directly to the Internet.
-- Reports are deterministic Markdown. No frontend, model provider, natural-language parsing, historical data, PDF report, sponsor integration, or agent memory is claimed.
+- Reports are deterministic Markdown. A buildless frontend is now served by the same backend; see [Workspace usage](WORKSPACE.md). No model provider, natural-language parsing, historical data, PDF report, sponsor integration, or agent memory is claimed.
 
 ## Numerical contract
 

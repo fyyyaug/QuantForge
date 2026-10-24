@@ -98,6 +98,16 @@ class Store:
         with self.lock:
             return self.owned(self.db, table, identity, workspace)
 
+    def list_runs(self, workspace, limit=50):
+        with self.lock:
+            return [
+                dict(row)
+                for row in self.db.execute(
+                    "SELECT * FROM runs WHERE workspace=? ORDER BY created_at DESC,id DESC LIMIT ?",
+                    (workspace, limit),
+                )
+            ]
+
     def create_plan(self, workspace, spec):
         with self.transaction() as db:
             identity = uid()

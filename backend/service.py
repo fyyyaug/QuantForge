@@ -166,6 +166,19 @@ class ResearchService:
             "updated_at": run["updated_at"],
         }
 
+    def history(self, workspace, limit=50):
+        return [
+            {
+                **self.view(workspace, row["id"]),
+                "symbol": plain(row_spec.symbol),
+                "dataset_id": row_spec.dataset_id,
+                "sample_start": str(row_spec.sample_start),
+                "sample_end": str(row_spec.sample_end),
+            }
+            for row in self.store.list_runs(workspace, limit)
+            for row_spec in [StrategySpec.model_validate_json(row["spec"])]
+        ]
+
     def propose(self, workspace, identity, kind, fee="5", slippage="5"):
         artifact = self.store.artifact(workspace, identity)
         spec = StrategySpec.model_validate(artifact["spec"])

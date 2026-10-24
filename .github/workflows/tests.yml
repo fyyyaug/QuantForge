@@ -1,4 +1,4 @@
-name: Backend foundation
+name: QuantForge checks
 
 on:
   push:
@@ -14,13 +14,21 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         python: ['3.11', '3.12']
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
       - run: python -m pip install -r requirements.lock
       - run: python -m ruff check backend scripts tests
       - run: python -m ruff format --check backend scripts tests
       - run: python -m pytest -q --cov=backend --cov-branch --cov-fail-under=90
       - run: python scripts/smoke_http.py
+      - run: node --check frontend/assets/app.js
+      - run: node --test frontend/tests/view-model.test.js
+      - run: npm ci --prefix frontend
+      - run: npm run format:check --prefix frontend

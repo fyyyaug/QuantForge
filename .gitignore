@@ -13,3 +13,5 @@ dist/
 .coverage
 coverage.json
 .quantforge-smoke/
+.quantforge-*/
+node_modules/

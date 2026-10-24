@@ -67,11 +67,14 @@ def main():
                         raise RuntimeError("HTTP server did not start")
                     time.sleep(0.1)
             assert health["status"] == "ok"
+            assert "Research workspace" in request("/")
+            assert "Research dataset" in request("/assets/app.js")
             plan = request("/api/research/plans", {})
             approval = {"revision": plan["revision"], "spec_hash": plan["spec_hash"]}
             request(f"/api/research/plans/{plan['plan_id']}/approve", approval)
             run = request("/api/research/runs", {"plan_id": plan["plan_id"], **approval}, "normal")
             assert run["state"] == "COMPLETED"
+            assert any(item["run_id"] == run["run_id"] for item in request("/api/runs"))
             diagnostic = request("/api/demo/diagnostic-runs", {}, "diagnostic")
             parent = diagnostic["run_id"]
             correction = request(f"/api/runs/{parent}/corrections", {"kind": "timing"})
