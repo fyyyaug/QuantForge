@@ -1,1 +1,163 @@
 # QuantForge
+
+**Don't just generate a backtest. Challenge it.**
+
+QuantForge is a planned AI quantitative research workspace that turns a constrained investment hypothesis into a reproducible backtest, checks its methodology against machine-verifiable evidence, and helps researchers compare an original experiment with an explicitly approved correction.
+
+The primary user is a student researcher who can describe a simple strategy but needs help finding methodological mistakes. Independent researchers and small research teams are secondary users.
+
+> **Status: design phase.** This repository currently contains planning documentation and an initial README. The application, agent runtime, backtest engine, audit rules, deployment, and integrations described below have not been implemented or validated. No performance results are claimed.
+
+## Why this project exists
+
+A convincing equity curve can come from future information, missing transaction costs, or unrealistic execution assumptions. Generating more strategy code does not establish that an experiment is valid.
+
+QuantForge is designed around inspectable evidence: what information a decision used, when that information became available, when a simulated order filled, which assumptions changed, and whether the corrected experiment was actually recomputed.
+
+## Planned research workflow
+
+1. **Describe a hypothesis** or select a supported strategy template.
+2. **Review the plan:** dataset, symbol, sample dates, signal, execution timing, allocation, costs, and explicit defaults.
+3. **Run the experiment** with a deterministic Python engine.
+4. **Inspect the audit:** individual checks, evidence, severity, and limitations.
+5. **Review a proposed correction** and approve a new experiment.
+6. **Compare and preserve both runs**, including their specifications, data versions, metrics, and audit findings.
+
+A failed check does not disappear when a report is generated. An unavailable check is marked **Unverified**, rather than passed.
+
+## MVP scope
+
+The initial scope is deliberately constrained:
+
+- One symbol and one currency per experiment.
+- Daily OHLCV data from versioned, explicitly labeled synthetic fixtures or appropriately licensed historical datasets.
+- Long-only trailing-momentum signals.
+- A decision after session t closes, entry at the next trading session's open, and exit at that session's close.
+- Fixed allocation, proportional fees, and a disclosed simplified slippage model.
+- Deterministic data-integrity, information-timing, and missing-cost checks.
+- Immutable original and corrected runs, specification diffs, and comparison.
+- A web workspace with a template-first path that remains usable without an LLM.
+
+Natural-language planning, account-based saved workspaces, cross-run agent memory, and downloadable reports are later enhancements. They are not prerequisites for validating the core pipeline.
+
+### Example research question
+
+> If the trailing five-session close-to-close return exceeds 2% after today's close, buy at the next session's open and sell at that session's close.
+
+The five-session return is close(t) / close(t-5) - 1. The threshold comparison is strictly greater than 2%. The next session is determined by the selected trading calendar, not by adding one calendar day.
+
+All example parameters are research assumptions, not investment recommendations.
+
+## Planned agent architecture
+
+QuantForge uses bounded specialist roles coordinated by a deterministic state machine. These roles do not require separate models or autonomous processes.
+
+| Component | Responsibility | Authority boundary |
+| --- | --- | --- |
+| Research Orchestrator | Enforce workflow state, ownership, budgets, and tool permissions | Owns transitions; does not invent research content |
+| Planner | Translate a supported hypothesis into a proposed StrategySpec | Cannot approve its own plan or calculate performance |
+| Runner | Request approved data, validation, and engine tools | Deterministic service; no arbitrary generated code |
+| Auditor | Execute deterministic rules and explain their evidence | Rule code owns findings; model commentary cannot change verdicts |
+| Correction Planner | Propose a minimal, evidence-linked specification change | Cannot overwrite a run or silently approve a rerun |
+| Report Writer | Explain saved results and limitations | All numeric claims must reference engine artifacts |
+| Memory Adapter (later) | Retrieve relevant, user-confirmed preferences and prior findings | Context only; cannot override the current plan |
+
+The engine calculates all metrics. The audit rule engine establishes machine-verifiable findings. AI helps plan and explain the research process.
+
+See [Architecture](docs/ARCHITECTURE.md) for agent contracts, workflow, numerical semantics, audit evidence, and failure behavior.
+
+## Planned audit coverage
+
+| Check | MVP behavior | Evidence |
+| --- | --- | --- |
+| A01: Information timing | Block a normal run if inputs were unavailable at the decision or execution boundary | Feature lineage, source rows, availability timestamps, decision and fill events |
+| A02: Missing or zero costs | Warn and offer a clearly labeled cost-sensitivity experiment | Cost configuration, actual trade count, separately computed comparison |
+| A03: Dataset integrity | Block invalid datasets before simulation | Missing columns, duplicate keys, offending rows, OHLC constraints |
+| A04: Split leakage | Later: check recorded split boundaries and parameter provenance | Training/test intervals and selection history |
+| A05: Overfitting risk | Later: flag insufficient holdout discipline | Trial history and holdout usage; never proof from one backtest |
+| A06: Survivorship bias | Unverified until adequate historical universe metadata exists | Universe provenance and delisting coverage |
+
+A passed rule means that its specified checks passed for the recorded inputs. It does not certify profitability, generalizability, or freedom from all bias.
+
+## Demonstration design
+
+The demonstration will use the same engine to compute a clean experiment and an explicitly labeled **synthetic, intentionally flawed diagnostic experiment**. The diagnostic fixture uses future close information before a simulated entry.
+
+Normal research execution must reject such timing violations. A separate server-controlled diagnostic path may compute the flawed experiment solely to demonstrate the audit. It must remain visibly invalid and must not be presented as an admissible strategy.
+
+Corrections create new runs. Before/after values must come from actual execution; the project will not hard-code impressive performance changes.
+
+## Proposed technology choices
+
+- **Frontend:** Next.js, TypeScript, Tailwind CSS, and a charting library to be selected.
+- **Backend:** FastAPI and Pydantic.
+- **Numerical engine:** Python, pandas, and NumPy with a small explicit execution model.
+- **Agent interface:** provider-independent structured planning and bounded tool invocation; Claude is the initial candidate from the whitepaper.
+- **Persistence:** SQLite for the first implementation; a production database can follow.
+- **Evaluation:** deterministic fixtures, hand-checked calculations, pytest, and an end-to-end browser smoke test.
+
+These are proposed choices, not installed dependencies or confirmed integrations. Provider SDKs, model identifiers, deployment configuration, and package versions will be selected and verified during implementation.
+
+## Repository guide
+
+Current planning documents:
+
+- [Architecture](docs/ARCHITECTURE.md): system boundaries, specialist roles, state transitions, financial semantics, and audits.
+- [Contracts and delivery plan](docs/CONTRACTS_AND_DELIVERY.md): data entities, tool/API contracts, errors, acceptance cases, and two-person work split.
+
+Proposed implementation layout:
+
+| Path | Intended contents |
+| --- | --- |
+| frontend/ | Research, plan review, results, audit, and comparison views |
+| backend/api/ | Authorized research endpoints and request validation |
+| backend/agent/ | Orchestration, prompts, model adapter, and tool registry |
+| backend/quant/ | Data validation, feature lineage, fills, ledger, and metrics |
+| backend/auditor/ | Versioned deterministic audit rules |
+| backend/models/ | Shared validated contracts |
+| fixtures/ | Labeled synthetic or redistributable datasets and manifests |
+| tests/ | Golden calculations, audit cases, security and workflow checks |
+| docs/ | Product and engineering design |
+
+The implementation directories above are planned and may not exist yet.
+
+## Setup and verification
+
+There is no runnable application or installation command yet. Dependency manifests, environment-variable templates, startup instructions, and test commands will be added with the first working implementation.
+
+Before a release is described as usable, it must demonstrate:
+
+- The same pinned inputs produce identical trades and metrics across three executions.
+- At least one numerical case matches an independent hand calculation.
+- Known timing leaks are detected with concrete evidence, while valid controls avoid false high-severity findings.
+- Invalid data produces a controlled failure rather than fabricated fills.
+- Corrections preserve the original run and recompute the new result.
+- A visitor can complete the supported workflow on the deployed application.
+
+## Data, safety, and limitations
+
+QuantForge is a research and simulation tool. It will not connect to a broker, place trades, custody assets, promise returns, or automatically search for a supposedly optimal strategy.
+
+The MVP execution model does not establish real-world liquidity, market impact, shorting, leverage, intraday path behavior, or multi-asset portfolio correctness. Corporate-action handling and data adjustment conventions must be disclosed.
+
+Dataset manifests must record provenance, license, currency, timezone, calendar, adjustment policy, synthetic/historical status, and content hash. Private or non-redistributable data must not be committed.
+
+Models must not receive credentials or unrestricted shell, network, filesystem, or code-execution capabilities. User text and dataset metadata are untrusted input. Saved experiments require server-side access checks.
+
+## Team collaboration
+
+Repository: [fyyyaug/QuantForge](https://github.com/fyyyaug/QuantForge).
+
+Collaborators should work on task branches and use pull requests to review changes. Backend/agent and frontend/product work should begin from the same frozen contracts and acceptance examples.
+
+The repository is currently private. Any future public release requires a separate decision and a review of data rights, secrets, and disclosures.
+
+## Integrations and disclosures
+
+Clerk, SurrealDB Agent Memory, Eon Era, Expo, and hosting providers are optional candidates discussed in the source whitepaper. None is claimed as integrated. Cross-run memory must affect an observable planning decision before it is described as agent memory.
+
+This documentation was drafted with Codex from the team's revised QuantForge whitepaper dated October 24, 2026. The architecture expands the whitepaper's planning proposals and does not represent completed engineering or measured outcomes. Competition requirements and submission eligibility have not been independently verified here.
+
+## License
+
+No software license has been selected. Dataset licenses must be tracked separately.
