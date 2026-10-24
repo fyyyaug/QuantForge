@@ -2,11 +2,11 @@
 
 **Don't just generate a backtest. Challenge it.**
 
-QuantForge is a planned AI quantitative research workspace that turns a constrained investment hypothesis into a reproducible backtest, checks its methodology against machine-verifiable evidence, and helps researchers compare an original experiment with an explicitly approved correction.
+QuantForge is an AI quantitative research project that turns a constrained investment hypothesis into a reproducible backtest, checks its methodology against machine-verifiable evidence, and helps researchers compare an original experiment with an explicitly approved correction.
 
 The primary user is a student researcher who can describe a simple strategy but needs help finding methodological mistakes. Independent researchers and small research teams are secondary users.
 
-> **Status: design phase.** This repository currently contains planning documentation and an initial README. The application, agent runtime, backtest engine, audit rules, deployment, and integrations described below have not been implemented or validated. No performance results are claimed.
+> **Status: backend foundation implemented.** The repository now includes a deterministic template planner, typed strategy contracts, Decimal backtesting, feature lineage, A01-A03 audits, SQLite persistence, approval records, immutable corrections, reports, and a local authenticated API. The frontend, language-model integration, historical data, durable jobs, production authentication, memory, and public deployment remain future work. See [Implementation status](docs/IMPLEMENTATION.md) and [Test report](docs/TEST_REPORT.md).
 
 ## Why this project exists
 
@@ -14,7 +14,7 @@ A convincing equity curve can come from future information, missing transaction 
 
 QuantForge is designed around inspectable evidence: what information a decision used, when that information became available, when a simulated order filled, which assumptions changed, and whether the corrected experiment was actually recomputed.
 
-## Planned research workflow
+## Research workflow
 
 1. **Describe a hypothesis** or select a supported strategy template.
 2. **Review the plan:** dataset, symbol, sample dates, signal, execution timing, allocation, costs, and explicit defaults.
@@ -91,12 +91,12 @@ Corrections create new runs. Before/after values must come from actual execution
 
 - **Frontend:** Next.js, TypeScript, Tailwind CSS, and a charting library to be selected.
 - **Backend:** FastAPI and Pydantic.
-- **Numerical engine:** Python, pandas, and NumPy with a small explicit execution model.
+- **Numerical engine:** Python Decimal and a small explicit execution model. pandas and NumPy are deferred; the foundation requires neither.
 - **Agent interface:** provider-independent structured planning and bounded tool invocation; Claude is the initial candidate from the whitepaper.
 - **Persistence:** SQLite for the first implementation; a production database can follow.
 - **Evaluation:** deterministic fixtures, hand-checked calculations, pytest, and an end-to-end browser smoke test.
 
-These are proposed choices, not installed dependencies or confirmed integrations. Provider SDKs, model identifiers, deployment configuration, and package versions will be selected and verified during implementation.
+The backend uses pinned FastAPI, Pydantic, Uvicorn, SQLite, and Decimal dependencies. Frontend, provider, auth, and deployment choices remain proposals. Exact tested packages are recorded in requirements.lock.
 
 ## Repository guide
 
@@ -119,11 +119,31 @@ Proposed implementation layout:
 | tests/ | Golden calculations, audit cases, security and workflow checks |
 | docs/ | Product and engineering design |
 
-The implementation directories above are planned and may not exist yet.
+The initial implementation uses backend/models.py, data.py, engine.py, audit.py, store.py, service.py, and api.py to keep the foundation navigable. The directory layout above remains the longer-term modularization target.
 
 ## Setup and verification
 
-There is no runnable application or installation command yet. Dependency manifests, environment-variable templates, startup instructions, and test commands will be added with the first working implementation.
+Requires Python 3.11 or 3.12. From the repository root in PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.lock
+$env:QUANTFORGE_API_TOKEN = .\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(40))"
+.\.venv\Scripts\python.exe -m backend
+```
+
+The service binds to 127.0.0.1:8000. [Interactive API documentation](http://127.0.0.1:8000/docs) exposes the request contracts. Protected endpoints require Authorization: Bearer followed by your private token. The database defaults to .quantforge/research.sqlite3; QUANTFORGE_DATA_DIR changes its location. Use exactly one worker. This shared-secret setup is local development authentication, not a production account system.
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q --cov=backend --cov-branch
+.\.venv\Scripts\python.exe -m ruff check backend scripts tests
+.\.venv\Scripts\python.exe -m ruff format --check backend scripts tests
+.\.venv\Scripts\python.exe scripts/smoke_http.py
+```
+
+On Linux/macOS use .venv/bin/python and your shell's environment-variable syntax. The real HTTP smoke script starts and stops a temporary loopback server. Windows test clients also need permission to create local sockets.
+
+[Implementation notes](docs/IMPLEMENTATION.md) provide the full request sequence, numerical assumptions, and known limits. The current API executes synchronously and returns HTTP 201 with the saved run state. A completed workflow can still have BLOCKED admissibility.
 
 Before a release is described as usable, it must demonstrate:
 
@@ -156,7 +176,7 @@ The repository is currently private. Any future public release requires a separa
 
 Clerk, SurrealDB Agent Memory, Eon Era, Expo, and hosting providers are optional candidates discussed in the source whitepaper. None is claimed as integrated. Cross-run memory must affect an observable planning decision before it is described as agent memory.
 
-This documentation was drafted with Codex from the team's revised QuantForge whitepaper dated October 24, 2026. The architecture expands the whitepaper's planning proposals and does not represent completed engineering or measured outcomes. Competition requirements and submission eligibility have not been independently verified here.
+Documentation and the backend foundation were developed with Codex from the team's revised QuantForge whitepaper dated October 24, 2026. Target-design documents include future capabilities; implementation and measured verification are tracked separately. Competition requirements and submission eligibility have not been independently verified here.
 
 ## License
 

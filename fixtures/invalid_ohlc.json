@@ -1,0 +1,7 @@
+{
+  "dataset_id": "invalid_ohlc",
+  "byte_hash": "75f716fcc6fbae86cc5606a7ed61313deb290ca1b47818df09eb7fe4f48382e0",
+  "row_count": 20,
+  "start_session": "2026-01-02",
+  "end_session": "2026-01-29"
+}

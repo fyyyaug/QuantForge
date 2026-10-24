@@ -1,6 +1,8 @@
 # QuantForge Architecture
 
-Design version: 0.1 | October 24, 2026 | Status: proposed, not implemented
+Design version: 0.1 | October 24, 2026 | Status: target architecture; foundation partially implemented
+
+Implementation note: see [Implementation status](IMPLEMENTATION.md) for the shipped subset and deliberate deviations. The complete design below remains a target, not a claim that every capability is present.
 
 ## 1. Design intent and decisions
 

@@ -1,6 +1,8 @@
 # Contracts and Delivery Plan
 
-Design version: 0.1 | October 24, 2026 | Status: proposed, not implemented
+Design version: 0.1 | October 24, 2026 | Status: target contracts; foundation partially implemented
+
+Implementation note: [Implementation status](IMPLEMENTATION.md) documents actual endpoint behavior. Run execution currently returns synchronously with HTTP 201 rather than using a durable asynchronous queue with HTTP 202.
 
 This document defines the handoff between frontend, backend, numerical engine, and agent roles. It accompanies [Architecture](ARCHITECTURE.md). Tables describe contracts; they are not implemented API or schema code.
 
@@ -294,4 +296,4 @@ If time is constrained, defer model planning, login, memory, PDF export, and spo
 | Software and dataset licenses | Select separately; no inferred permission | Before publication |
 | Optional sponsor tooling | Require working integration evidence | After P0 exit gates |
 
-No code, dependencies, infrastructure, account changes, or integrations are introduced by these planning documents.
+These planning documents describe the target. The backend foundation is now implemented in this repository; deployment and optional provider integrations remain future work.
