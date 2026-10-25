@@ -2,6 +2,8 @@
 
 **Don't just generate a backtest. Challenge it.**
 
+New users: follow the [English User Guide](docs/USER_GUIDE.md) for Windows setup, demo access, the research workflow, and troubleshooting.
+
 QuantForge is an AI quantitative research project that turns a constrained investment hypothesis into a reproducible backtest, checks its methodology against machine-verifiable evidence, and helps researchers compare an original experiment with an explicitly approved correction.
 
 The primary user is a student researcher who can describe a simple strategy but needs help finding methodological mistakes. Independent researchers and small research teams are secondary users.

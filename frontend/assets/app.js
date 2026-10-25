@@ -91,7 +91,7 @@ function render() {
 }
 function connectView() {
   return `<div class="eyebrow">THE RESEARCH WORKSPACE</div><section class="intro"><h1>A backtest is a claim.<br><span>Ask for the evidence.</span></h1><p>Plan an experiment, trace its assumptions, and challenge the result.<br>Every correction leaves a trail you can inspect.</p></section>
-    <div class="connect-grid"><section class="panel connect-panel">${state.demo?.enabled ? `<div class="section-number">01 / TRY IT</div><h2>Challenge a backtest.</h2><p>Open an isolated workspace with fictional prices and real calculations. No account or API key needed.</p>${button('start-demo', 'Try the live demo <span>↗</span>', 'primary')}<p class="fine">${e(state.demo.limits.session_minutes)} minutes · ${e(state.demo.limits.max_runs)} runs · Synthetic data only. Saved demo experiments expire with the session.</p><details><summary>Connect a private workspace instead</summary>` : '<div class="section-number">01 / CONNECT</div><h2>Open your private workspace</h2><p>Use the private workspace token configured when starting this backend.</p>'}
+    <div class="connect-grid"><section class="panel connect-panel">${state.demo?.enabled ? `<div class="section-number">01 / TRY IT</div><h2>Challenge a backtest.</h2><p>Open an isolated workspace with fictional prices and real calculations. No account or API key needed.</p>${button('start-demo', 'Try the live demo <span>↗</span>', 'primary')}${state.demo.session_active ? `<p>An existing demo session is still active. If its allowance is exhausted, end it before starting another. Ending it removes browser access to its experiments.</p>${button('end-demo', 'End existing demo session')}` : ''}<p class="fine">${e(state.demo.limits.session_minutes)} minutes · ${e(state.demo.limits.max_runs)} runs · Synthetic data only. Saved demo experiments expire with the session.</p><details><summary>Connect a private workspace instead</summary>` : '<div class="section-number">01 / CONNECT</div><h2>Open your private workspace</h2><p>Use the private workspace token configured when starting this backend.</p>'}
     <form id="connect-form"><label for="token">Workspace token</label><input id="token" name="token" type="password" autocomplete="off" spellcheck="false" required minlength="32" placeholder="Enter your private access token"><button class="primary" type="submit" ${state.busy || !state.ready ? 'disabled' : ''}>Connect workspace <span>↗</span></button></form><p class="fine">Private tokens stay in this tab's memory. Reloading a private workspace requires reconnecting.</p>${state.demo?.enabled ? '</details>' : ''}</section>
     <section class="connect-story"><div class="section-number">THE RESEARCH LOOP</div>${[
       ['01', 'Make the assumptions explicit', 'Review signal timing, allocation, and trading costs.'],
@@ -279,8 +279,11 @@ async function api(path, { method = 'GET', body, key } = {}) {
     if (!response.ok) {
       const code = data?.error?.code ?? 'REQUEST_FAILED';
       if (response.status === 401 && connected()) resetWorkspace();
+      if (code === 'SESSION_EXPIRED' && state.demo) state.demo.session_active = false;
       throw new Error(
-        errorMessages[code] ?? `${code}: ${data?.error?.message ?? 'Request could not be completed.'}`,
+        ['DEMO_QUOTA_REACHED', 'DEMO_RATE_LIMIT'].includes(code)
+          ? `${data?.error?.message ?? 'Demo limit reached.'} ${code === 'DEMO_RATE_LIMIT' ? 'Wait for the limit window to reset, then retry.' : 'You can end the demo using End demo or End existing demo session. Starting another session is subject to service capacity.'}`
+          : (errorMessages[code] ?? `${code}: ${data?.error?.message ?? 'Request could not be completed.'}`),
       );
     }
     return data;
@@ -497,9 +500,12 @@ root.addEventListener('click', (event) => {
     state.notice = null;
     render();
   }
-  if (action === 'disconnect') {
+  if (action === 'disconnect' || action === 'end-demo') {
     task(async () => {
-      if (state.accessMode === 'demo') await api('/api/demo/session/logout', { method: 'POST', body: {} });
+      if (state.accessMode === 'demo' || action === 'end-demo') {
+        await api('/api/demo/session/logout', { method: 'POST', body: {} });
+        state.demo.session_active = false;
+      }
       resetWorkspace();
     });
   }
