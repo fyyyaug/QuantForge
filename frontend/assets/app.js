@@ -5,11 +5,16 @@ import {
   chartGeometry,
   validateFields,
   humanStatus as label,
+  timingEvidence,
+  utcTimestamp,
 } from './view-model.js';
 
 const root = document.querySelector('#app');
 const state = {
   token: '',
+  accessMode: null,
+  demo: null,
+  ready: false,
   screen: 'home',
   datasets: [],
   history: [],
@@ -34,6 +39,7 @@ const titles = {
   history: 'Experiment history',
 };
 const short = (value) => (value ? `${value.slice(0, 8)}…` : '—');
+const connected = () => Boolean(state.token || state.accessMode === 'demo');
 const badge = (status) =>
   `<span class="badge ${['FAIL', 'BLOCKED', 'FAILED'].includes(status) ? 'danger' : ['WARN', 'UNVERIFIED', 'DIAGNOSTIC_INVALID'].includes(status) ? 'warning' : 'neutral'}">${e(label(status))}</span>`;
 const button = (action, text, cls = 'secondary', extra = '') =>
@@ -60,11 +66,11 @@ function nav() {
     <div class="nav-caption">WORKSPACE</div><nav aria-label="Workspace navigation">
     <a href="#home" ${state.screen === 'home' ? 'aria-current="page"' : ''}><span>◈</span> New research</a>
     <a href="#history" ${state.screen === 'history' ? 'aria-current="page"' : ''}><span>↺</span> Experiments <small>${state.history.length || ''}</small></a></nav>
-    <div class="sidebar-note"><span class="dot"></span> Local research environment<p>Inspect the evidence.<br>Keep every experiment.</p></div>
+    <div class="sidebar-note"><span class="dot"></span> ${state.accessMode === 'demo' ? 'Isolated demo session' : 'Research environment'}<p>Inspect the evidence.<br>Keep every experiment.</p></div>
     <div class="side-bottom">Built for careful questions.<br><b>Research only · No live trading</b></div></aside>`;
 }
 function render() {
-  const content = !state.token
+  const content = !connected()
     ? connectView()
     : state.screen === 'home'
       ? homeView()
@@ -77,16 +83,16 @@ function render() {
             : state.screen === 'audit'
               ? auditView()
               : resultsView();
-  root.innerHTML = `${nav()}<div class="workspace"><header><span class="breadcrumb">Workspace <span>/</span> ${e(titles[state.screen])}</span><div class="header-right"><span class="local-pill">${state.token ? 'Workspace connected' : 'Local access'}</span>${state.token ? button('disconnect', 'Disconnect', 'quiet') : ''}</div></header>
+  root.innerHTML = `${nav()}<div class="workspace"><header><span class="breadcrumb">Workspace <span>/</span> ${e(titles[state.screen])}</span><div class="header-right"><span class="local-pill">${state.accessMode === 'demo' ? 'Isolated demo' : connected() ? 'Workspace connected' : 'Research access'}</span>${connected() ? button('disconnect', state.accessMode === 'demo' ? 'End demo' : 'Disconnect', 'quiet') : ''}</div></header>
     <main id="main" tabindex="-1" aria-busy="${state.busy}">${state.notice ? `<div class="notice" role="alert"><strong>${e(state.notice.title)}</strong><span>${e(state.notice.message)}</span>${button('dismiss', 'Dismiss', 'quiet')}</div>` : ''}
-    ${state.busy ? '<div class="working" role="status"><span class="spinner"></span> Working with the research engine. Please keep this page open.</div>' : ''}${content}
+    ${state.accessMode === 'demo' ? `<div class="demo-session-note">Private to this browser session · Up to ${e(state.demo.limits.max_runs)} runs · Expires ${e(utcTimestamp(new Date(state.demo.expires_at * 1000).toISOString()))}. Download reports you want to keep.</div>` : ''}${state.busy ? '<div class="working" role="status"><span class="spinner"></span> Working with the research engine. Please keep this page open.</div>' : ''}${content}
     <footer><span>QuantForge / Evidence before conclusions</span><span>Synthetic data · Simplified execution · No investment advice</span></footer></main></div>${state.correction ? correctionView() : ''}`;
   document.title = `QuantForge / ${titles[state.screen]}`;
 }
 function connectView() {
   return `<div class="eyebrow">THE RESEARCH WORKSPACE</div><section class="intro"><h1>A backtest is a claim.<br><span>Ask for the evidence.</span></h1><p>Plan an experiment, trace its assumptions, and challenge the result.<br>Every correction leaves a trail you can inspect.</p></section>
-    <div class="connect-grid"><section class="panel connect-panel"><div class="section-number">01 / CONNECT</div><h2>Open your local workspace</h2><p>Use the private workspace token configured when starting this backend.</p>
-    <form id="connect-form"><label for="token">Workspace token</label><input id="token" name="token" type="password" autocomplete="off" spellcheck="false" required minlength="32" placeholder="Enter your private access token"><button class="primary" type="submit" ${state.busy ? 'disabled' : ''}>Connect workspace <span>↗</span></button></form><p class="fine">Your token stays in this tab's memory. It is never saved to browser storage. Reloading requires reconnecting.</p></section>
+    <div class="connect-grid"><section class="panel connect-panel">${state.demo?.enabled ? `<div class="section-number">01 / TRY IT</div><h2>Challenge a backtest.</h2><p>Open an isolated workspace with fictional prices and real calculations. No account or API key needed.</p>${button('start-demo', 'Try the live demo <span>↗</span>', 'primary')}<p class="fine">${e(state.demo.limits.session_minutes)} minutes · ${e(state.demo.limits.max_runs)} runs · Synthetic data only. Saved demo experiments expire with the session.</p><details><summary>Connect a private workspace instead</summary>` : '<div class="section-number">01 / CONNECT</div><h2>Open your private workspace</h2><p>Use the private workspace token configured when starting this backend.</p>'}
+    <form id="connect-form"><label for="token">Workspace token</label><input id="token" name="token" type="password" autocomplete="off" spellcheck="false" required minlength="32" placeholder="Enter your private access token"><button class="primary" type="submit" ${state.busy || !state.ready ? 'disabled' : ''}>Connect workspace <span>↗</span></button></form><p class="fine">Private tokens stay in this tab's memory. Reloading a private workspace requires reconnecting.</p>${state.demo?.enabled ? '</details>' : ''}</section>
     <section class="connect-story"><div class="section-number">THE RESEARCH LOOP</div>${[
       ['01', 'Make the assumptions explicit', 'Review signal timing, allocation, and trading costs.'],
       ['02', 'Challenge the methodology', 'Inspect deterministic checks and their source evidence.'],
@@ -102,7 +108,7 @@ function homeView() {
   const dataset = state.datasets.find((d) => d.dataset_id === f.dataset_id);
   return `<div class="page-heading"><div><div class="eyebrow">RESEARCH / NEW EXPERIMENT</div><h1>Start with a hypothesis.</h1><p>Simple rules. Explicit assumptions. Reproducible evidence.</p></div><span class="tag">TEMPLATE PLANNING</span></div>
     <div class="home-grid"><section class="panel"><div class="panel-top"><h2>Trailing momentum</h2><span class="tag">LONG ONLY · DAILY</span></div><p class="hypothesis">When the trailing return exceeds your threshold, enter at the next session's open and exit at its close.</p>
-    <form id="plan-form"><div class="field wide"><label for="dataset">Research dataset</label><select id="dataset" name="dataset_id">${state.datasets.map((d) => `<option value="${e(d.dataset_id)}" ${d.dataset_id === f.dataset_id ? 'selected' : ''}>${e(d.dataset_id.replaceAll('_', ' '))}${d.dataset_id === 'clean_momentum' ? ' · recommended' : d.dataset_id === 'leaky_next_close' ? ' · same prices, normal research' : ' · integrity test'}</option>`).join('')}</select><small>All fixtures are synthetic. Malformed fixtures demonstrate data validation.</small></div>
+    <form id="plan-form"><div class="field wide"><label for="dataset">Research dataset</label><select id="dataset" name="dataset_id">${state.datasets.map((d) => `<option value="${e(d.dataset_id)}" ${d.dataset_id === f.dataset_id ? 'selected' : ''}>${e(d.dataset_id.replaceAll('_', ' '))}${d.dataset_id === 'clean_momentum' ? ' · recommended' : d.dataset_id === 'leaky_next_close' ? ' · original control' : d.dataset_id === 'timing_trap' ? ' · timing control' : ' · integrity test'}</option>`).join('')}</select><small>All fixtures are synthetic. Malformed fixtures demonstrate data validation.</small></div>
     <div class="fields">${field('lookback_sessions', 'Lookback sessions', f.lookback_sessions, 'number', 'min="1" max="252" step="1"')}${field('threshold_pct', 'Return threshold (%)', f.threshold_pct, 'number', 'min="-100" max="10000" step="any"')}${field('sample_start', 'Sample start', f.sample_start, 'date')}${field('sample_end', 'Sample end', f.sample_end, 'date')}${field('initial_nav', 'Starting capital (USD)', f.initial_nav, 'number', 'min="0.000000000001" max="1000000000000" step="any"')}${field('allocation_fraction', 'Allocation fraction', f.allocation_fraction, 'number', 'min="0.000000000001" max="1" step="any"')}${field('fee_bps_each_side', 'Commission (bps / side)', f.fee_bps_each_side, 'number', 'min="0" max="1000" step="any"')}${field('slippage_bps_each_side', 'Slippage (bps / side)', f.slippage_bps_each_side, 'number', 'min="0" max="1000" step="any"')}</div>
     <div class="form-bottom"><span>Review the exact plan before any execution.</span><button type="submit" class="primary" ${state.busy ? 'disabled' : ''}>Review plan <span>→</span></button></div></form></section>
     <div class="right-stack"><section class="panel dataset-card"><div class="section-number">DATA TRANSPARENCY</div><h3>Fictional prices.<br>Real calculations.</h3><dl><dt>Symbol</dt><dd>${e(dataset?.symbol)}</dd><dt>Source</dt><dd>QuantForge synthetic fixture</dd><dt>Calendar</dt><dd>Explicit synthetic sessions · UTC</dd><dt>Coverage</dt><dd>${e(dataset?.start_session)} — ${e(dataset?.end_session)}</dd><dt>Data license</dt><dd>${e(dataset?.license)}</dd></dl><span class="tag">SYNTHETIC · NOT MARKET HISTORY</span></section>
@@ -131,7 +137,7 @@ function reviewView() {
   return `${steps('review')}<div class="page-heading"><div><div class="eyebrow">01 / REVIEW</div><h1>${state.diagnostic ? 'An intentional timing mistake.' : 'Make the assumptions explicit.'}</h1><p>${state.diagnostic ? 'This demonstration uses future information. Its results will remain invalid.' : 'Check the exact specification before approving an experiment.'}</p></div>${badge(state.diagnostic ? 'DIAGNOSTIC_INVALID' : 'UNVERIFIED')}</div>
     ${
       state.diagnostic
-        ? `<section class="panel"><h2>Diagnostic: future close before an open fill</h2><div class="warning-box">Synthetic, intentionally flawed. The signal reads close(t+1) even though entry happens at open(t+1). This is not an admissible research strategy.</div><p>The engine will calculate this fixed example so you can inspect the audit evidence and approve a separate corrected run. Performance may go up or down after correction.</p></section>`
+        ? `<section class="panel"><h2>Diagnostic: future close before an open fill</h2><div class="warning-box">Synthetic, intentionally flawed. The signal reads close(t+1) even though entry happens at open(t+1). This is not an admissible research strategy.</div><p>The timing trap deliberately alternates price moves around the signal threshold. Inspect how tomorrow's information changes the selected trades, then approve a separate corrected experiment. Every metric is calculated by the engine.</p></section>`
         : `<section class="panel"><div class="panel-top"><h2>Approved scope, transparent defaults</h2><span class="mono">Revision ${state.plan.revision}</span></div><p class="hypothesis">If the ${e(spec.lookback_sessions)}-session trailing return is strictly greater than ${e(spec.threshold_pct)}%, allocate ${percent(spec.allocation_fraction)} of NAV at the next session's open, then exit at its close.</p><div class="timeline"><div><b>01</b><h3>Observe</h3><p>Session t closes at 16:00 UTC.<br>Only available history is used.</p></div><div><b>02</b><h3>Decide</h3><p>Decision at 16:00:01.<br>Order submitted at 16:00:02.</p></div><div><b>03</b><h3>Simulate</h3><p>Next explicit session:<br>09:30 entry → 16:00 exit.</p></div></div>
     <dl class="spec-grid"><div><dt>Dataset</dt><dd>${e(spec.dataset_id)} · SYNTHETIC</dd></div><div><dt>Sample</dt><dd>${e(spec.sample_start)} — ${e(spec.sample_end)}</dd></div><div><dt>Starting NAV</dt><dd>$${number(spec.initial_nav)}</dd></div><div><dt>Costs per side</dt><dd>${e(spec.fee_bps_each_side)} bps commission + ${e(spec.slippage_bps_each_side)} bps slippage</dd></div><div><dt>Specification hash</dt><dd class="mono wrap">${e(state.plan.spec_hash)}</dd></div></dl><details><summary>Inspect full strategy specification</summary><pre>${e(JSON.stringify(spec, null, 2))}</pre></details></section>`
     }
@@ -184,7 +190,7 @@ function auditView() {
     A05_OVERFITTING_RISK: 'Overfitting risk',
     A06_SURVIVORSHIP: 'Survivorship coverage',
   };
-  return `${runHeading('03 / AUDIT', 'Evidence before conclusions.')}<p class="section-intro">A passed check covers a specific rule. Unverified checks remain unknown. There is no overall confidence score.</p><div class="audit-list">${a.findings
+  return `${runHeading('03 / AUDIT', 'Evidence before conclusions.')}<p class="section-intro">A passed check covers a specific rule. Unverified checks remain unknown. There is no overall confidence score.</p>${timingTimeline(a.findings)}<div class="audit-list">${a.findings
     .map(
       (
         f,
@@ -193,6 +199,19 @@ function auditView() {
     ${f.check_id === 'A02_MISSING_COSTS' && a.mode === 'RESEARCH' && a.result?.trades.length ? `<form id="cost-form" class="cost-form"><h3>Cost sensitivity experiment</h3><div class="fields">${field('correction_fee', 'Commission (bps / side)', Number(a.spec.fee_bps_each_side) === 0 ? '5' : '10', 'number', 'min="0" max="1000" step="any"')}${field('correction_slippage', 'Slippage (bps / side)', '5', 'number', 'min="0" max="1000" step="any"')}</div><button type="submit" class="secondary" ${state.busy ? 'disabled' : ''}>Review cost change →</button></form>` : ''}</div></section>`,
     )
     .join('')}</div>`;
+}
+function timingTimeline(findings) {
+  const finding = findings.find((f) => f.check_id === 'A01_LOOKAHEAD' && f.status === 'FAIL');
+  const evidence = timingEvidence(finding?.evidence ?? []);
+  if (!evidence.length) return '';
+  const first = evidence[0];
+  return `<section class="panel timing-evidence"><div class="section-number">WHY THIS RESULT IS BLOCKED</div><h2>The order came before the information.</h2><p>Source row ${e(first.row_number)} · ${e(first.field)} · ${e(first.decision_id)}. The input must be available before the decision and the fill.</p><div class="timeline"><div><b>01</b><h3>Decision recorded</h3><p>${e(utcTimestamp(first.decision_at))}</p></div><div><b>02</b><h3>Order entered</h3><p>${e(utcTimestamp(first.entry_at))}</p></div><div class="late-information"><b>!</b><h3>Input became available</h3><p>${e(utcTimestamp(first.available_at))}<br>Too late for this decision.</p></div></div><p class="fine">One of ${e(evidence.length)} recorded timing violations. Full source records appear below.</p></section>`;
+}
+
+function decisionChanges(comparison) {
+  const changes = comparison.decision_changes;
+  if (!changes) return '';
+  return `<section class="panel decision-changes"><div class="section-number">WHAT CHANGED IN EXECUTION</div><h2>${e(changes.changed_signals)} entry signals changed.</h2><p>Original: ${e(changes.before_trade_count ?? 'N/A')} trades. New experiment: ${e(changes.after_trade_count ?? 'N/A')} trades. Equal trade counts can still select different sessions.</p>${changes.changes.length ? `<details open><summary>Inspect changed entry decisions</summary><div class="table-wrap"><table><thead><tr><th>Entry session (UTC)</th><th>Original signal</th><th>New signal</th><th>Original action</th><th>New action</th></tr></thead><tbody>${changes.changes.map((d) => `<tr><td>${e(d.entry_at.slice(0, 10))}</td><td>${percent(d.before_feature)}</td><td>${percent(d.after_feature)}</td><td>${d.before_triggered ? 'Enter' : 'Stay flat'}</td><td>${d.after_triggered ? 'Enter' : 'Stay flat'}</td></tr>`).join('')}</tbody></table></div></details>` : '<p class="fine">The selected signals match. Inspect cost, mode, and specification differences before interpreting the results.</p>'}</section>`;
 }
 function correctionView() {
   const c = state.correction;
@@ -217,7 +236,7 @@ function compareView() {
         `<section class="panel"><div class="panel-top"><h2>${title}</h2>${badge(item.admissibility)}</div><p class="mono">${e(id)}</p><span class="tag">${e(a?.mode)} · SYNTHETIC</span>${a?.result ? `<div class="compare-metrics"><div><small>Total return</small><strong>${percent(item.metrics.total_return)}</strong></div><div><small>Max drawdown</small><strong>${percent(item.metrics.max_drawdown)}</strong></div></div>${chart(a.result, title + ' NAV')}` : '<p>No simulation result available.</p>'}</section>`,
     )
     .join('')}</div>
-    <section class="panel"><h2>Recorded differences</h2><pre>${e(JSON.stringify({ specification: c.spec_diff, execution_mode: c.mode_diff }, null, 2))}</pre><p class="fine">Charts use their own labeled NAV scales. No silent rescaling, alignment, or statistical significance is implied. Identical metrics do not establish identical methodology; an invalid information dependency is still invalid.</p><div class="actions">${button('audit-original', 'Audit original experiment')}${button('audit', 'Audit new experiment', 'primary')}${button('download-report', 'Download new report')}</div></section>`;
+    ${decisionChanges(c)}<section class="panel"><h2>Recorded differences</h2><pre>${e(JSON.stringify({ specification: c.spec_diff, execution_mode: c.mode_diff }, null, 2))}</pre><p class="fine">Charts use their own labeled NAV scales. No silent rescaling, alignment, or statistical significance is implied. Identical metrics do not establish identical methodology; an invalid information dependency is still invalid.</p><div class="actions">${button('audit-original', 'Audit original experiment')}${button('audit', 'Audit new experiment', 'primary')}${button('download-report', 'Download new report')}</div></section>`;
 }
 function historyTable(rows) {
   return `<div class="table-wrap"><table><caption class="sr-only">Recent saved experiments</caption><thead><tr><th>Experiment</th><th>Dataset</th><th>Mode</th><th>State</th><th>Created</th><th><span class="sr-only">Action</span></th></tr></thead><tbody>${rows.length ? rows.map((r) => `<tr><td class="mono">${e(short(r.run_id))}${r.parent_run_id ? '<small class="child-note">↳ correction child</small>' : ''}</td><td>${e(r.dataset_id)}</td><td>${r.execution_mode === 'DIAGNOSTIC_INVALID' ? badge('DIAGNOSTIC_INVALID') : 'Research'}</td><td>${e(r.state)}</td><td>${e(new Date(r.created_at).toLocaleString())}</td><td>${button('open-run', 'Open →', 'quiet', `data-id="${e(r.run_id)}"`)}</td></tr>`).join('') : '<tr><td colspan="6" class="empty-row">Your first experiment starts with a question. Create a plan above.</td></tr>'}</tbody></table></div>`;
@@ -233,6 +252,9 @@ const errorMessages = {
   RUN_NOT_READY: 'The experiment has no completed artifact yet. Refresh its state or inspect history.',
   NOT_FOUND: 'This resource is unavailable in the connected workspace.',
   NO_SUPPORTED_CORRECTION: 'There is no supported correction for this experiment.',
+  SESSION_EXPIRED:
+    'Your demo session ended. Open a new demo to continue. Download reports before ending a session.',
+  ORIGIN_REJECTED: 'Open the research workspace on this same site and try again.',
   STATE_CONFLICT: 'The experiment state no longer permits that action.',
 };
 async function api(path, { method = 'GET', body, key } = {}) {
@@ -243,8 +265,10 @@ async function api(path, { method = 'GET', body, key } = {}) {
       method,
       signal: controller.signal,
       cache: 'no-store',
+      credentials: 'same-origin',
       headers: {
-        Authorization: `Bearer ${state.token}`,
+        ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
+        'X-QuantForge-Request': 'workspace',
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(key ? { 'Idempotency-Key': key } : {}),
       },
@@ -254,6 +278,7 @@ async function api(path, { method = 'GET', body, key } = {}) {
     const data = content.includes('application/json') ? await response.json() : await response.text();
     if (!response.ok) {
       const code = data?.error?.code ?? 'REQUEST_FAILED';
+      if (response.status === 401 && connected()) resetWorkspace();
       throw new Error(
         errorMessages[code] ?? `${code}: ${data?.error?.message ?? 'Request could not be completed.'}`,
       );
@@ -295,6 +320,31 @@ async function task(fn) {
 }
 async function history() {
   state.history = await api('/api/runs');
+}
+function resetWorkspace() {
+  Object.assign(state, {
+    token: '',
+    accessMode: null,
+    datasets: [],
+    history: [],
+    plan: null,
+    run: null,
+    artifact: null,
+    correction: null,
+    comparison: null,
+    original: null,
+    notice: null,
+    form: null,
+    screen: 'home',
+    diagnostic: false,
+    runKey: null,
+  });
+}
+async function connectWorkspace() {
+  const [datasets, runs] = await Promise.all([api('/api/datasets'), api('/api/runs')]);
+  state.datasets = datasets;
+  state.history = runs;
+  state.screen = 'home';
 }
 async function loadRun(id) {
   const run = await api(`/api/runs/${encodeURIComponent(id)}`);
@@ -346,10 +396,8 @@ root.addEventListener('submit', (event) => {
     task(async () => {
       state.token = values.token.trim();
       try {
-        const [datasets, runs] = await Promise.all([api('/api/datasets'), api('/api/runs')]);
-        state.datasets = datasets;
-        state.history = runs;
-        state.screen = 'home';
+        state.accessMode = 'private';
+        await connectWorkspace();
       } catch (error) {
         state.token = '';
         throw error;
@@ -432,29 +480,28 @@ root.addEventListener('click', (event) => {
   const target = event.target.closest('[data-action]');
   if (!target || state.busy) return;
   const action = target.dataset.action;
+  if (action === 'start-demo')
+    task(async () => {
+      const session = await api('/api/demo/session', { method: 'POST', body: {} });
+      state.demo = { ...state.demo, ...session, session_active: true };
+      state.accessMode = 'demo';
+      try {
+        await connectWorkspace();
+      } catch (error) {
+        resetWorkspace();
+        throw error;
+      }
+    });
   if (['results', 'audit', 'compare', 'review'].includes(action)) navigate(action);
   if (action === 'dismiss') {
     state.notice = null;
     render();
   }
   if (action === 'disconnect') {
-    Object.assign(state, {
-      token: '',
-      datasets: [],
-      history: [],
-      plan: null,
-      run: null,
-      artifact: null,
-      correction: null,
-      comparison: null,
-      original: null,
-      notice: null,
-      form: null,
-      screen: 'home',
-      diagnostic: false,
-      runKey: null,
+    task(async () => {
+      if (state.accessMode === 'demo') await api('/api/demo/session/logout', { method: 'POST', body: {} });
+      resetWorkspace();
     });
-    render();
   }
   if (action === 'edit') navigate('home');
   if (action === 'diagnostic-review') {
@@ -531,3 +578,20 @@ document.addEventListener('keydown', (event) => {
   }
 });
 render();
+async function initialize() {
+  try {
+    const config = await api('/api/workspace');
+    state.demo = config.demo;
+    if (state.demo.session_active) {
+      state.accessMode = 'demo';
+      await connectWorkspace();
+    }
+  } catch (error) {
+    resetWorkspace();
+    state.notice = { title: 'Workspace unavailable', message: error.message };
+  } finally {
+    state.ready = true;
+    render();
+  }
+}
+initialize();

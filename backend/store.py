@@ -36,7 +36,8 @@ def uid():
 
 
 class Store:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, demo_policy=None):
+        self.demo_policy = demo_policy
         path.parent.mkdir(parents=True, exist_ok=True)
         self.lock = threading.RLock()
         self.db = sqlite3.connect(path, check_same_thread=False, timeout=15)
@@ -70,6 +71,13 @@ class Store:
             CREATE TABLE IF NOT EXISTS approvals (
                 id TEXT PRIMARY KEY, entity TEXT NOT NULL, entity_id TEXT NOT NULL,
                 workspace TEXT NOT NULL, revision_hash TEXT NOT NULL, timestamp TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS demo_sessions (
+                token_hash TEXT PRIMARY KEY, workspace TEXT UNIQUE NOT NULL, expires_at INTEGER NOT NULL,
+                requests INTEGER NOT NULL DEFAULT 0, revoked INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS demo_counters (
+                scope TEXT, window INTEGER, count INTEGER NOT NULL, PRIMARY KEY(scope,window)
             );
         """)
         self.db.commit()
@@ -110,6 +118,7 @@ class Store:
 
     def create_plan(self, workspace, spec):
         with self.transaction() as db:
+            self.check_demo_capacity(db, workspace, "plans")
             identity = uid()
             db.execute(
                 "INSERT INTO plans VALUES(?,?,?,?,?,0)",
@@ -146,6 +155,7 @@ class Store:
         return self.get("plans", identity, workspace)
 
     def insert_run(self, db, workspace, spec, mode, parent=None):
+        self.check_demo_capacity(db, workspace, "runs")
         identity, timestamp = uid(), now()
         db.execute(
             "INSERT INTO runs VALUES(?,?,?,?,?,?,?,NULL,NULL,?,?)",
@@ -233,6 +243,7 @@ class Store:
     def correction(self, workspace, parent_id, proposal):
         with self.transaction() as db:
             self.owned(db, "runs", parent_id, workspace)
+            self.check_demo_capacity(db, workspace, "corrections")
             identity = uid()
             db.execute(
                 "INSERT INTO corrections VALUES(?,?,?,?,?,NULL)",
@@ -261,6 +272,20 @@ class Store:
                 )
             db.execute("INSERT INTO requests VALUES(?,?,?,?,?)", (workspace, "rerun", key, request_hash, identity_run))
         return identity_run
+
+    def check_demo_capacity(self, db, workspace, table):
+        if self.demo_policy is None or not workspace.startswith("demo:"):
+            return
+        limits = {
+            "runs": self.demo_policy.max_runs,
+            "plans": self.demo_policy.max_plans,
+            "corrections": self.demo_policy.max_corrections,
+        }
+        if table not in limits:
+            raise ValueError("Unsupported demo quota")
+        count = db.execute(f"SELECT COUNT(*) FROM {table} WHERE workspace=?", (workspace,)).fetchone()[0]
+        if count >= limits[table]:
+            raise ResearchError("DEMO_QUOTA_REACHED", f"Demo limit reached: {limits[table]} {table} per session.", 429)
 
     def recover_interrupted(self):
         """Call only during startup of the documented single-process deployment."""

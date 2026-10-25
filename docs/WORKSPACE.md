@@ -6,7 +6,7 @@ The local web workspace is implemented in buildless HTML, CSS, and JavaScript mo
 
 Follow the Python environment and private token setup in README.md, then run python -m backend. Open http://127.0.0.1:8000/ and connect using the same QUANTFORGE_API_TOKEN configured for that server.
 
-The browser keeps the token only in tab memory. Refreshing requires reconnecting; the server's saved experiments remain in SQLite. Disconnecting clears the current token and research views. This is local development authentication, not public account management.
+For private mode, the browser keeps the token only in tab memory. Refreshing requires reconnecting; the server's saved experiments remain in SQLite. Disconnecting clears the current token and research views. This is local development authentication, not public account management.
 
 ## Implemented experience
 
@@ -19,7 +19,7 @@ The browser keeps the token only in tab memory. Refreshing requires reconnecting
 7. Compare saved original and child results; neither artifact is overwritten.
 8. Reopen saved runs from scoped history; reopening a child restores its comparison.
 
-The guided diagnostic runs only the allowlisted intentionally invalid future-close case. It is marked invalid before execution, in results, in audit, and in its report. Matching before/after metrics do not imply that a future-information dependency is valid.
+The guided diagnostic defaults to the allowlisted `timing_trap` future-close case; the original `leaky_next_close` case remains available through its explicit API parameter. It is marked invalid before execution, in results, in audit, and in its report. Matching before/after metrics do not imply that a future-information dependency is valid.
 
 The browser draws charts from engine-provided NAV series. JavaScript converts Decimal strings to numbers only for chart coordinates and display rounding; the scientific arithmetic and stored results remain on the backend. Independent chart scales and lack of statistical significance are disclosed in comparison.
 
@@ -76,4 +76,12 @@ Report/JSON downloads use the already retrieved saved artifact, a temporary Blob
 
 ## Remaining scope
 
-Language-model planning, real historical data, production identity, durable workers, public deployment, and cross-run agent memory remain unimplemented. The UI does not imply otherwise. Existing engine assumptions and limitations continue to apply.
+Language-model planning, real historical data, production identity, durable workers, and cross-run agent memory remain unimplemented. Public-demo code and a disk-backed Render Blueprint are prepared, but a public URL and cloud acceptance remain to be verified. The UI does not imply otherwise. Existing engine assumptions and limitations continue to apply.
+
+## Anonymous demonstration mode
+
+Set `QUANTFORGE_PUBLIC_DEMO=true` to display **Try the live demo**. Each browser receives an isolated cookie-authenticated workspace. Refresh resumes the same unexpired session and history. Use a different browser profile to test a different visitor; tabs share the session cookie. **End demo** revokes access. The landing page discloses the lifetime and run allowance; the connected workspace shows its UTC expiry. Use `QUANTFORGE_COOKIE_SECURE=true` for production HTTPS and false only for local HTTP.
+
+A human-readable timing panel now shows the actual source row, decision time, opening entry and input availability before the raw audit records. Comparisons report the number of changed entry signals and show original/new actions. These are derived from saved decisions, without performance promises. The intentionally constructed `timing_trap` fixture yields different entry dates under flawed and corrected methodology; the original equal-result fixture is unchanged.
+
+See [Deployment](DEPLOYMENT.md) for complete limits, cleanup, persistence, and the external-device gate. This section describes implementation; browser and HTTP verification for the current revision are recorded in TEST_REPORT.md.

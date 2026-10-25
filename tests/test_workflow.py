@@ -73,6 +73,25 @@ def test_cost_sensitivity_recomputes_same_gross_trades(service):
     assert service.compare("alice", parent, child)["classification"] == "CONTROLLED_ASSUMPTION_CHANGE"
 
 
+def test_timing_trap_changes_selected_sessions_with_actual_recalculation(service):
+    parent = service.store.queue_diagnostic("alice", service.template("timing_trap"), "trap")
+    service.execute("alice", parent)
+    original = service.store.artifact("alice", parent)
+    proposal = service.propose("alice", parent, "timing")
+    child = service.store.approve_rerun("alice", proposal["id"], proposal["hash"], "trap-corrected")
+    service.execute("alice", child)
+    corrected = service.store.artifact("alice", child)
+    assert Decimal(original["result"]["metrics"]["total_return"]) > 0
+    assert Decimal(corrected["result"]["metrics"]["total_return"]) < 0
+    before = {t["entry_at"] for t in original["result"]["trades"]}
+    after = {t["entry_at"] for t in corrected["result"]["trades"]}
+    assert before and after and before.isdisjoint(after)
+    changes = service.compare("alice", parent, child)["decision_changes"]
+    assert changes["changed_signals"] == len(before | after) == 14
+    assert all(d["before_triggered"] != d["after_triggered"] for d in changes["changes"])
+    assert service.store.artifact("alice", parent) == original
+
+
 def test_approval_invalidation_and_idempotency_conflict(service):
     spec = service.template()
     plan = service.store.create_plan("alice", spec)

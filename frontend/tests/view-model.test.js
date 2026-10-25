@@ -7,6 +7,8 @@ import {
   chartGeometry,
   validateFields,
   humanStatus,
+  utcTimestamp,
+  timingEvidence,
 } from '../assets/view-model.js';
 
 test('escape all HTML metacharacters and hostile strings', () => {
@@ -66,4 +68,16 @@ test('audit labels preserve unknown and not-applicable status', () => {
   assert.equal(humanStatus('UNVERIFIED'), 'Unverified');
   assert.equal(humanStatus('NOT_APPLICABLE'), 'Not applicable');
   assert.equal(humanStatus('FAILED'), 'FAILED');
+});
+
+test('timing evidence keeps concrete UTC timestamps and excludes incomplete records', () => {
+  const record = {
+    available_at: '2026-01-12T16:00:00+00:00',
+    decision_at: '2026-01-09T16:00:01+00:00',
+    entry_at: '2026-01-12T09:30:00+00:00',
+  };
+  assert.equal(utcTimestamp(record.available_at), '2026-01-12 16:00:00 UTC');
+  assert.equal(utcTimestamp('invalid'), 'N/A');
+  assert.equal(utcTimestamp(null), 'N/A');
+  assert.deepEqual(timingEvidence([record, {}, { ...record, entry_at: 'invalid' }]), [record]);
 });

@@ -22,3 +22,25 @@ def test_startup_shows_address_without_echoing_secret(monkeypatch, capsys):
     assert "http://127.0.0.1:8000/" in output
     assert secret not in output
     assert calls[0][1] == {"factory": True, "host": "127.0.0.1", "port": 8000, "workers": 1}
+
+
+def test_cloud_port_and_demo_startup_require_no_shared_browser_secret(monkeypatch, capsys):
+    import uvicorn
+
+    monkeypatch.delenv("QUANTFORGE_API_TOKEN", raising=False)
+    monkeypatch.setenv("QUANTFORGE_PUBLIC_DEMO", "true")
+    monkeypatch.setenv("PORT", "10000")
+    calls = []
+    monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: calls.append(kwargs))
+    main()
+    assert calls == [{"factory": True, "host": "0.0.0.0", "port": 10000, "workers": 1}]
+    assert "0.0.0.0:10000" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("port", ["0", "65536", "nonsense"])
+def test_invalid_cloud_port_is_rejected(monkeypatch, port):
+    from backend.config import server_address
+
+    monkeypatch.setenv("PORT", port)
+    with pytest.raises(ValueError, match="PORT"):
+        server_address()

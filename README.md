@@ -6,7 +6,7 @@ QuantForge is an AI quantitative research project that turns a constrained inves
 
 The primary user is a student researcher who can describe a simple strategy but needs help finding methodological mistakes. Independent researchers and small research teams are secondary users.
 
-> **Status: local research workspace implemented.** The repository includes a browser workflow connected to the deterministic backend: template planning, review, backtesting, evidence, correction approval, saved comparisons and history. Language-model integration, historical data, durable jobs, production authentication, memory, and public deployment remain future work. See [Workspace usage and verification](docs/WORKSPACE.md), [Implementation status](docs/IMPLEMENTATION.md), and [Test report](docs/TEST_REPORT.md).
+> **Status: integrated workspace and bounded public-demo mode implemented; cloud deployment pending verification.** The browser workflow includes template planning, review, backtesting, timing evidence, correction approval, changed-decision comparisons, report downloads and history. Opt-in anonymous sessions isolate visitors, enforce persistent quotas and resume after a page reload. A Render Blueprint prepares a single-instance service with a persistent disk. Language-model integration, historical data, durable jobs, production accounts and memory remain future work. See [Workspace usage and verification](docs/WORKSPACE.md), [Implementation status](docs/IMPLEMENTATION.md), and [Test report](docs/TEST_REPORT.md).
 
 ## Why this project exists
 
@@ -38,7 +38,7 @@ The initial scope is deliberately constrained:
 - Immutable original and corrected runs, specification diffs, and comparison.
 - A web workspace with a template-first path that remains usable without an LLM.
 
-Natural-language planning, account-based saved workspaces, cross-run agent memory, and downloadable reports are later enhancements. They are not prerequisites for validating the core pipeline.
+Natural-language planning, account-based saved workspaces and cross-run agent memory are later enhancements. Markdown report and scientific-JSON downloads are implemented. They are not prerequisites for validating the core pipeline.
 
 ### Example research question
 
@@ -96,7 +96,7 @@ Corrections create new runs. Before/after values must come from actual execution
 - **Persistence:** SQLite for the first implementation; a production database can follow.
 - **Evaluation:** deterministic fixtures, hand-checked calculations, pytest, and an end-to-end browser smoke test.
 
-The backend uses pinned FastAPI, Pydantic, Uvicorn, SQLite, and Decimal dependencies. Frontend, provider, auth, and deployment choices remain proposals. Exact tested packages are recorded in requirements.lock.
+The backend uses pinned FastAPI, Pydantic, Uvicorn, SQLite, and Decimal dependencies. Provider and production identity choices remain proposals. The bounded demo uses cookie sessions and includes a Render deployment configuration. Exact tested packages are recorded in requirements.lock.
 
 ## Repository guide
 
@@ -153,6 +153,22 @@ Before a release is described as usable, it must demonstrate:
 - Invalid data produces a controlled failure rather than fabricated fills.
 - Corrections preserve the original run and recompute the new result.
 - A visitor can complete the supported workflow on the deployed application.
+
+## Public demo and deployment
+
+Local anonymous preview on macOS/Linux, after installing the Python dependencies:
+
+```sh
+export QUANTFORGE_PUBLIC_DEMO=true
+export QUANTFORGE_COOKIE_SECURE=false
+python -m backend
+```
+
+Open http://127.0.0.1:8000/ and choose **Try the live demo**. The environment must not contain a malformed private token. Each visitor receives an isolated two-hour session with up to 12 runs; no shared secret is embedded in the frontend. Existing private bearer-token access remains available. The demo supports six synthetic fixtures, three implemented audit checks, and explicit Unverified coverage for the other three.
+
+The guided `timing_trap` example produces a real change in selected entry sessions after the approved correction. The original equal-result diagnostic fixture remains available. No result is hard-coded into the UI.
+
+[Deployment guide](docs/DEPLOYMENT.md) documents the paid disk-backed Render Blueprint, quota/retention behavior and external-device acceptance gate. [Demo and submission preparation](docs/DEMO_AND_SUBMISSION.md) includes a two-minute recording script and honest project-description draft. A public URL, completed cloud verification and actual video are not yet claimed.
 
 ## Data, safety, and limitations
 

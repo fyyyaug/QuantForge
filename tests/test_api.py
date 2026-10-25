@@ -15,7 +15,7 @@ def make_run(client, overrides=None, dataset="clean_momentum", key="first"):
 
 def test_api_full_flow_and_contract(client):
     assert client.get("/health").json()["status"] == "ok"
-    assert len(client.get("/api/datasets").json()) == 5
+    assert len(client.get("/api/datasets").json()) == 6
     run, payload = make_run(client)
     assert run["state"] == "COMPLETED"
     identity = run["run_id"]

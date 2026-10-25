@@ -1,89 +1,84 @@
 # QuantForge Verification Report
 
-Date: October 24, 2026
+Date: October 24, 2026. Scope: local public-demo delivery changes. No public deployment, remote CI success or independent user study is claimed.
 
-## Result
+## Observed results
 
-The integrated workspace regression passed **90 backend tests** with no warnings, plus **6 frontend presentation tests**. Backend tests ran on Windows with Python 3.11.0 and the pinned packages in requirements.lock. Frontend checks use Node.js; the bundled Node 24 runtime was also used for the initial presentation tests.
-
-| Check | Observed result |
+| Check | Result |
 | --- | --- |
-| pytest regression | 90 passed in 4.36 seconds |
-| Frontend presentation tests | 6 passed |
-| Combined statement/branch coverage | 94.82% (terminal rounded display: 95%) |
-| Engine coverage | 100% of measured engine statements and branches |
-| Audit coverage | 100% of measured audit statements and branches |
-| Real localhost HTTP smoke | Passed |
-| Ruff static checks | Passed |
-| Python and frontend formatting | Ruff and Prettier checks passed |
-| Python compileall | Passed |
-| pip dependency consistency | No broken requirements found |
+| Backend regression | 112 passed, no warnings |
+| Statement/branch coverage | 95.41% |
+| Engine, audit and demo-access coverage | 100% of measured statements and branches |
+| Frontend presentation tests | 7 passed |
+| JavaScript syntax | Passed |
+| Real localhost HTTP smoke | Passed: private and anonymous-cookie workflows |
+| Ruff static and format checks | Passed |
+| Prettier frontend and Blueprint formatting | Passed |
+| Git whitespace/diff check | Passed |
 
-Coverage is a measurement of exercised code, not a proof that every behavior is correct. The HTTP smoke test exercises a real Uvicorn process separately from the in-process API tests. Its temporary process and database are cleaned up.
+Environment: macOS arm64, Python 3.12.14, pinned requirements.lock packages and bundled Node.js 24. Coverage includes the new config, anonymous-session, API, and quota code. Coverage is exercised code, not proof of complete correctness.
 
-## Verified behavior
+## Numerical and audit checks
 
-- Independent hand calculation: NAV 10,000 -> 10,180 -> 10,057.84 for a +2% trade followed by a -1% trade with 20 bps round-trip modeled costs. Total return is 0.5784%; maximum drawdown is -1.2%.
-- Initial NAV is included when computing drawdown; partial allocation and flat sessions behave as specified.
-- Five-session return indexing, exact threshold equality, pre-sample warmup, explicit session gaps, and final-session skips are covered.
-- Non-tradable zero-volume sessions do not produce fabricated fills.
-- Zero-cost and paid runs use the same gross trade sequence; modeled costs do not increase NAV under those controlled assumptions.
-- Three identical pinned runs produce exactly equal scientific artifacts and hashes.
-- Numerical execution does not inherit a caller's lower Decimal precision.
-- Known future-close leakage, information arriving after a decision but before a fill, equal-boundary ambiguity, missing lineage, and invalid order chronology are detected.
-- No-decision samples are Not Applicable for timing coverage rather than falsely passed.
-- Missing open prices, duplicate sessions, invalid OHLC relationships, invalid dates, negative volume, nonfinite values, missing columns, unknown symbols, empty data, and corrupt fixture hashes are rejected.
-- A03 errors identify source rows and specific missing fields where available.
-- Path traversal, arbitrary feature code, diagnostic-mode overrides, nonfinite strategy inputs, extreme Decimal exponents, oversize and chunked request bodies are rejected.
-- Exact-revision approvals are required; editing invalidates approval.
-- Concurrent retries create one run; repeated execution does not duplicate state events.
-- Corrections produce at most one child per proposal and require the exact approved proposal hash.
-- A failed child leaves the parent's stored artifact unchanged.
-- Cross-workspace reads, comparisons, corrections, and approvals are denied.
-- Restart recovery fails interrupted runs explicitly instead of pretending they completed.
-- Stored artifact tampering or a missing artifact produces a controlled integrity error.
-- Injected execution/persistence failures do not publish successful output or expose internal exception text through the public result.
-- A completed workflow with invalid data has BLOCKED admissibility and no numerical result.
+- The independent hand calculation still produces NAV 10,000 -> 10,180 -> 10,057.84, total return 0.5784%, and maximum drawdown -1.2%.
+- Three identical pinned runs retain exactly equal scientific outputs and hashes.
+- Five-session indexing, strict threshold equality, pre-sample warmup, explicit session gaps, zero-volume skips, final-session behavior, initial-NAV drawdown and partial allocation remain covered.
+- Timing tests detect future information, information arriving after a decision but before a fill, equal-boundary ambiguity, missing lineage and invalid order chronology, including non-triggered decisions.
+- A03 rejects malformed OHLCV and records source rows/fields. A02 compares zero/nonzero modeled costs on the same gross fills. A04-A06 remain Unverified.
+- The new default timing_trap actually recalculates an intentionally invalid +83.7684% result and a corrected -50.8060% result from deliberately constructed synthetic prices. Both contain seven trades, but their entry dates are disjoint and 14 entry signals change. No return is stored in frontend code.
+- The original leaky_next_close fixture and its matching control retain their original bytes and remain supported explicitly. Identical results in that case still do not validate future-information use.
 
-## Actual HTTP smoke flow
+## Public-session and persistence checks
 
-The smoke script launched a temporary server on a free localhost port and performed:
+- Anonymous mode is opt-in; private credentials and ownership checks continue to work.
+- Session responses do not return credentials or workspace IDs. Stored session credentials are hashed. Cookie attributes include HttpOnly/SameSite=Strict; production adds Secure and the host-only prefix.
+- A second demo visitor cannot read or correct another workspace's runs. Demo visitors cannot read private runs. Comparison and exact-approval ownership boundaries remain enforced.
+- Cookie-authenticated writes require a custom same-origin header and reject foreign Origins. Cross-origin preflight does not grant permission. Bad supplied bearer credentials cannot silently fall back to a cookie.
+- Session issuance, authenticated request allowances, plan/correction counts and run counts are bounded. Runs and their correction children share the same allowance.
+- Idempotent retries return an existing run at the creation limit; rejected creations do not publish extra runs.
+- Sessions, saved runs, issuance counters and total request allowances survive reopening the database.
+- Expired sessions immediately fail authentication. Cleanup removes expired demo parents/children, plans, approvals, events and unreferenced artifacts. It preserves private history, artifacts still referenced elsewhere, and expired workspaces with an in-flight run until that run reaches a terminal state.
+- Ending a demo revokes a copied cookie and remains available after ordinary request allowance exhaustion.
+- Startup honors cloud port/host while enforcing one worker. Invalid ports and malformed private tokens are rejected.
 
-1. Health request.
-2. Template plan creation and exact-hash approval.
-3. Normal research execution to COMPLETED.
-4. Synthetic intentionally invalid diagnostic execution.
-5. Timing-correction proposal and approval.
-6. Child research rerun.
-7. Comparison confirming the invalid parent remains BLOCKED and the corrected child is ADMISSIBLE_WITHIN_CHECKED_SCOPE.
-8. Report retrieval preserving the SYNTHETIC label.
+## Real HTTP verification
 
-The observed comparison classification was METHODOLOGY_CORRECTION. No credential was printed or committed.
+scripts/smoke_http.py starts a temporary Uvicorn process with an isolated database. It verifies health/static assets, an approved private research run, the new diagnostic and approved correction, comparison, report labels, and private history. It then creates an independent cookie demo, checks isolated history, executes diagnostic/correction runs and ends the session. It cleans up temporary data without printing credentials.
 
-## Environment issue encountered
+Observed summary: http_smoke=passed, normal_run=COMPLETED, comparison=METHODOLOGY_CORRECTION, parent_preserved=true, anonymous_demo=passed, changed_signals=14.
 
-The restricted execution sandbox prevented Windows asyncio from creating its local socket pair. API tests therefore stalled before entering application code. The final API tests and real HTTP smoke were run with local-network execution permitted and passed. Earlier blocked test processes were stopped.
+The local sandbox does not permit listening sockets. The real HTTP smoke and browser-preview server ran with explicit local-network execution permission. The in-process regression ran in the sandbox.
 
-The test body limiter was also implemented as ordinary ASGI middleware rather than relying on private Request body internals. The final version is covered for oversized streamed input.
+## Browser verification
+
+The in-app browser completed these steps against an isolated localhost synthetic workspace:
+
+1. Open the landing page and enter via Try the live demo, without a private token.
+2. Review and run the new invalid diagnostic, observing Blocked and synthetic labels.
+3. Inspect source row and actual decision, entry and input-availability timestamps.
+4. Approve the correction and observe the recalculated comparison.
+5. Inspect 14 changed entry signals and the original/new entry actions.
+6. Reload, resume the cookie session and reopen the saved child and comparison from history.
+
+The viewport was approximately 440 pixels wide. Cards stacked and the wide decision table scrolled inside its container. [Changed-decision screenshot](screenshots/changed-decisions.png) records the result. This is local browser QA, not an independent usability measurement or cloud HTTPS acceptance. Earlier workspace verification is documented in WORKSPACE.md; its earlier download/desktop checks were not all repeated for this revision.
 
 ## Re-run
 
-From the project root, after installing requirements.lock:
+From the Git repository root, using the pinned environment:
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q --cov=backend --cov-branch --cov-fail-under=90
-.\.venv\Scripts\python.exe -m ruff check backend scripts tests
-.\.venv\Scripts\python.exe -m ruff format --check backend scripts tests
-.\.venv\Scripts\python.exe scripts/smoke_http.py
-.\.venv\Scripts\python.exe -m pip check
+```sh
+python -m pytest -q --cov=backend --cov-branch --cov-fail-under=90
+python -m ruff check backend scripts tests
+python -m ruff format --check backend scripts tests
+python scripts/smoke_http.py
+node --check frontend/assets/app.js
+node --test frontend/tests/view-model.test.js
+npm ci --prefix frontend
+npm run format:check --prefix frontend
 ```
 
-The CI workflow configures Windows/Linux and Python 3.11/3.12. This report describes local verification; it does not assert that remote CI jobs have passed before their results are available.
+CI is configured for Windows/Linux and Python 3.11/3.12. Local results do not establish remote jobs have passed. Render's runtime, disk and external-device flow must still pass the gate in DEPLOYMENT.md after deployment.
 
 ## Remaining limits
 
-No tests establish correctness for real market calendars, adjusted historical prices, market liquidity, multi-asset portfolios, production identity, public deployment, a language-model provider, or a durable multi-process worker system. Those features are not implemented. [Workspace verification notes](WORKSPACE.md) describe browser checks, the static-response replay fix, and the exact comparison of a downloaded report against its saved server artifact.
-
-The single-process service does not enforce a hard CPU kill timeout. Deployment recovery marks interrupted jobs failed rather than resuming them. Non-queued cancellation is unsupported. Artifact hashes detect content changes against stored hashes but are not signatures protecting against a database administrator.
-
-Some defensive branches, startup entrypoint lines, and error wrappers remain outside the measured unit-test coverage. The actual HTTP server launch is checked separately. No claim of zero possible bugs or complete security is made.
+Tests do not establish real exchange-calendar correctness, adjusted historical prices, liquidity, multi-asset portfolios, model-provider behavior, distributed execution, public production identity or profitability. There is no hard CPU kill timeout, resumable durable queue or distributed rate limiter. Fixed-window limits constrain small synthetic sessions; platform abuse protection is still required. Artifact hashes are not signatures against an administrator changing the database. Some defensive/error branches remain outside measured coverage.

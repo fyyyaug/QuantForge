@@ -12,7 +12,9 @@ from pydantic import ValidationError
 from .errors import ResearchError
 from .models import Bar, DataIssue, DatasetManifest, StrategySpec
 
-CATALOG_IDS = frozenset({"clean_momentum", "leaky_next_close", "missing_open", "duplicate_sessions", "invalid_ohlc"})
+CATALOG_IDS = frozenset(
+    {"clean_momentum", "leaky_next_close", "timing_trap", "missing_open", "duplicate_sessions", "invalid_ohlc"}
+)
 MAX_BYTES = 5 * 1024 * 1024
 MAX_ROWS = 10000
 REQUIRED = {"date", "symbol", "open", "high", "low", "close", "volume"}

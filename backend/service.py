@@ -238,12 +238,33 @@ class ResearchService:
             classification = "METHODOLOGY_CORRECTION"
         else:
             classification = "CONTROLLED_ASSUMPTION_CHANGE" if diff else "IDENTICAL_CONFIGURATION"
+        decision_changes = None
+        if same_data and left["versions"] == right["versions"] and classification != "NOT_DIRECTLY_COMPARABLE":
+            previous = {d["entry_at"]: d for d in left["decisions"]}
+            changed = [
+                {
+                    "entry_at": d["entry_at"],
+                    "before_feature": previous[d["entry_at"]]["feature_value"],
+                    "after_feature": d["feature_value"],
+                    "before_triggered": previous[d["entry_at"]]["triggered"],
+                    "after_triggered": d["triggered"],
+                }
+                for d in right["decisions"]
+                if d["entry_at"] in previous and d["triggered"] != previous[d["entry_at"]]["triggered"]
+            ]
+            decision_changes = {
+                "changed_signals": len(changed),
+                "changes": changed,
+                "before_trade_count": len(left["result"]["trades"]) if left["result"] else None,
+                "after_trade_count": len(right["result"]["trades"]) if right["result"] else None,
+            }
         return {
             "left_run_id": left_id,
             "right_run_id": right_id,
             "classification": classification,
             "spec_diff": diff,
             "mode_diff": {"before": left["mode"], "after": right["mode"]},
+            "decision_changes": decision_changes,
             "left": {
                 "admissibility": left["admissibility"],
                 "metrics": left["result"]["metrics"] if left["result"] else None,

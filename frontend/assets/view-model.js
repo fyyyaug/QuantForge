@@ -73,3 +73,17 @@ export function humanStatus(status) {
     }[status] ?? status
   );
 }
+
+export function utcTimestamp(value) {
+  if (!value) return 'N/A';
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? date.toISOString().replace('T', ' ').replace('.000Z', ' UTC')
+    : 'N/A';
+}
+
+export function timingEvidence(evidence) {
+  return evidence.filter((item) =>
+    ['available_at', 'decision_at', 'entry_at'].every((key) => utcTimestamp(item[key]) !== 'N/A'),
+  );
+}
