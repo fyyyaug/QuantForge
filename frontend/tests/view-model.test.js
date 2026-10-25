@@ -9,6 +9,8 @@ import {
   humanStatus,
   utcTimestamp,
   timingEvidence,
+  suggestedCosts,
+  costChangeIssue,
 } from '../assets/view-model.js';
 
 test('escape all HTML metacharacters and hostile strings', () => {
@@ -80,4 +82,28 @@ test('timing evidence keeps concrete UTC timestamps and excludes incomplete reco
   assert.equal(utcTimestamp('invalid'), 'N/A');
   assert.equal(utcTimestamp(null), 'N/A');
   assert.deepEqual(timingEvidence([record, {}, { ...record, entry_at: 'invalid' }]), [record]);
+});
+
+test('cost proposals always change the current assumptions within supported precision', () => {
+  for (const fee of ['0', '5', '10', '15', '999.999999', '1000', '0.333333']) {
+    const spec = { fee_bps_each_side: fee, slippage_bps_each_side: '5' };
+    const proposal = suggestedCosts(spec);
+    assert.equal(costChangeIssue(spec, proposal), null);
+  }
+  assert.deepEqual(suggestedCosts({ fee_bps_each_side: '0', slippage_bps_each_side: '0' }), {
+    correction_fee: '5',
+    correction_slippage: '5',
+  });
+});
+
+test('unchanged, zero, nonfinite and overprecision cost changes are rejected before a request', () => {
+  const spec = { fee_bps_each_side: '10', slippage_bps_each_side: '5' };
+  for (const proposal of [
+    { correction_fee: '10', correction_slippage: '5' },
+    { correction_fee: '0', correction_slippage: '0' },
+    { correction_fee: 'NaN', correction_slippage: '5' },
+    { correction_fee: '1001', correction_slippage: '5' },
+    { correction_fee: '0.0000001', correction_slippage: '5' },
+  ])
+    assert.ok(costChangeIssue(spec, proposal));
 });

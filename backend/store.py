@@ -79,6 +79,15 @@ class Store:
             CREATE TABLE IF NOT EXISTS demo_counters (
                 scope TEXT, window INTEGER, count INTEGER NOT NULL, PRIMARY KEY(scope,window)
             );
+            CREATE TABLE IF NOT EXISTS plan_context (
+                plan_id TEXT PRIMARY KEY REFERENCES plans(id) ON DELETE CASCADE, content TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS run_context (
+                run_id TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE, content TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS planner_calls (
+                id TEXT PRIMARY KEY, workspace TEXT NOT NULL, started_at INTEGER NOT NULL, status TEXT NOT NULL
+            );
         """)
         self.db.commit()
 
@@ -100,7 +109,12 @@ class Store:
         row = db.execute(f"SELECT * FROM {table} WHERE id=? AND workspace=?", (identity, workspace)).fetchone()
         if row is None:
             raise ResearchError("NOT_FOUND", "Resource not found", 404)
-        return dict(row)
+        row = dict(row)
+        context = {"plans": ("plan_context", "plan_id"), "runs": ("run_context", "run_id")}.get(table)
+        if context:
+            found = db.execute(f"SELECT content FROM {context[0]} WHERE {context[1]}=?", (identity,)).fetchone()
+            row["planning"] = json.loads(found[0]) if found else {"source": "LEGACY_TEMPLATE"}
+        return row
 
     def get(self, table, identity, workspace):
         with self.lock:
@@ -116,7 +130,7 @@ class Store:
                 )
             ]
 
-    def create_plan(self, workspace, spec):
+    def create_plan(self, workspace, spec, planning=None):
         with self.transaction() as db:
             self.check_demo_capacity(db, workspace, "plans")
             identity = uid()
@@ -130,6 +144,10 @@ class Store:
                     digest(spec),
                 ),
             )
+            db.execute(
+                "INSERT INTO plan_context VALUES(?,?)",
+                (identity, canonical(planning or {"source": "DETERMINISTIC_TEMPLATE"})),
+            )
         return self.get("plans", identity, workspace)
 
     def revise(self, workspace, identity, revision, spec):
@@ -140,6 +158,10 @@ class Store:
             db.execute(
                 "UPDATE plans SET revision=revision+1,spec=?,hash=?,approved=0 WHERE id=?",
                 (canonical(spec), digest(spec), identity),
+            )
+            db.execute(
+                "INSERT OR REPLACE INTO plan_context VALUES(?,?)",
+                (identity, canonical({"source": "USER_EDITED", "previous_source": plan["planning"]["source"]})),
             )
         return self.get("plans", identity, workspace)
 
@@ -154,7 +176,7 @@ class Store:
             )
         return self.get("plans", identity, workspace)
 
-    def insert_run(self, db, workspace, spec, mode, parent=None):
+    def insert_run(self, db, workspace, spec, mode, parent=None, planning=None):
         self.check_demo_capacity(db, workspace, "runs")
         identity, timestamp = uid(), now()
         db.execute(
@@ -162,6 +184,7 @@ class Store:
             (identity, workspace, canonical(spec), digest(spec), mode, parent, "QUEUED", timestamp, timestamp),
         )
         db.execute("INSERT INTO events VALUES(?,?,?,?)", (identity, 1, "QUEUED", timestamp))
+        db.execute("INSERT INTO run_context VALUES(?,?)", (identity, canonical(planning or {"source": mode})))
         return identity
 
     @staticmethod
@@ -184,7 +207,7 @@ class Store:
             plan = self.owned(db, "plans", plan_id, workspace)
             if not plan["approved"] or plan["revision"] != revision or plan["hash"] != spec_hash:
                 raise ResearchError("STALE_APPROVAL", "Approve the exact current plan before execution", 409)
-            identity = self.insert_run(db, workspace, json.loads(plan["spec"]), "RESEARCH")
+            identity = self.insert_run(db, workspace, json.loads(plan["spec"]), "RESEARCH", planning=plan["planning"])
             db.execute("INSERT INTO requests VALUES(?,?,?,?,?)", (workspace, "run", key, request_hash, identity))
         return identity
 
@@ -264,7 +287,15 @@ class Store:
                 identity_run = correction["child_id"]
             else:
                 proposal = json.loads(correction["proposal"])
-                identity_run = self.insert_run(db, workspace, proposal["spec"], "RESEARCH", correction["parent_id"])
+                provenance = {key: value for key, value in proposal.items() if key != "spec"}
+                identity_run = self.insert_run(
+                    db,
+                    workspace,
+                    proposal["spec"],
+                    "RESEARCH",
+                    correction["parent_id"],
+                    {"source": "APPROVED_CORRECTION", "correction": provenance},
+                )
                 db.execute("UPDATE corrections SET child_id=? WHERE id=?", (identity_run, identity))
                 db.execute(
                     "INSERT INTO approvals VALUES(?,?,?,?,?,?)",

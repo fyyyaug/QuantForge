@@ -76,7 +76,7 @@ Report/JSON downloads use the already retrieved saved artifact, a temporary Blob
 
 ## Remaining scope
 
-Language-model planning, real historical data, production identity, durable workers, and cross-run agent memory remain unimplemented. Public-demo code and a disk-backed Render Blueprint are prepared, but a public URL and cloud acceptance remain to be verified. The UI does not imply otherwise. Existing engine assumptions and limitations continue to apply.
+An optional Claude planner adapter is implemented; live-provider validation remains pending credentials. Real historical data, production identity, durable workers, and cross-run agent memory remain unimplemented. Public-demo code and a disk-backed Render Blueprint are prepared, but a public URL and cloud acceptance remain to be verified. The UI does not imply otherwise. Existing engine assumptions and limitations continue to apply.
 
 ## Anonymous demonstration mode
 
@@ -85,3 +85,11 @@ Set `QUANTFORGE_PUBLIC_DEMO=true` to display **Try the live demo**. Each browser
 A human-readable timing panel now shows the actual source row, decision time, opening entry and input availability before the raw audit records. Comparisons report the number of changed entry signals and show original/new actions. These are derived from saved decisions, without performance promises. The intentionally constructed `timing_trap` fixture yields different entry dates under flawed and corrected methodology; the original equal-result fixture is unchanged.
 
 See [Deployment](DEPLOYMENT.md) for complete limits, cleanup, persistence, and the external-device gate. This section describes implementation; browser and HTTP verification for the current revision are recorded in TEST_REPORT.md.
+
+## Current review and evidence features
+
+Optional AI planning appears above the template with an explicit configured/unconfigured label. A configured request requires acknowledgement that the hypothesis is sent to Anthropic; drafts must still be reviewed and approved. Missing configuration, provider failures and unsupported output leave the template usable. See PLANNING.md for exact boundaries and evaluation status.
+
+Cost forms propose a real assumption change, display the before/after costs, and disable unchanged or invalid input. Comparison pages can export a single Markdown document containing both experiments. New research reports retain full strategy fields, units, source evidence and scientific fingerprints; scientific JSON remains available for all underlying records.
+
+The home screen links to the audit-evaluation table. Its 26 generated synthetic controls are separate from the fixed product CSVs; it explicitly disclaims real-market detection rates and external-benchmark status. The browser regression now exercises desktop and 390-pixel mobile flows automatically, including a fix that keeps offscreen table captions inside their scroll container.

@@ -2,7 +2,7 @@
 
 Version 0.1.0 | October 24, 2026
 
-This is the implemented subset of the target architecture. All market data is synthetic. No external model or market-data service is called.
+This is the implemented subset of the target architecture. All market data is synthetic. Default template mode calls no external service. An opt-in Claude planner is implemented; real-provider validation remains pending credentials, and no market-data service is integrated.
 
 ## Implemented modules
 
@@ -18,6 +18,9 @@ This is the implemented subset of the target architecture. All market data is sy
 | api.py | Private token / anonymous-cookie resolution, same-origin mutation checks, bounded bodies and safe errors |
 | demo.py | Hashed anonymous sessions, persistent request allowances, expiry and scoped cleanup |
 | config.py | Explicit local/cloud startup and bounded demo policy |
+| planner.py | Optional schema-bound Claude parameter proposals and persistent call allowances |
+| reporting.py | Full deterministic research and comparison Markdown exports |
+| evaluation.py | Independent seeded synthetic controls and per-rule detection counts |
 
 The planner, runner, auditor, correction planner, and report writer are bounded logical roles. There is no autonomous model loop or generated code execution.
 
@@ -31,7 +34,7 @@ The planner, runner, auditor, correction planner, and report writer are bounded 
 - Availability is derived from the fixture's declared UTC publication policy. Inputs must be strictly earlier than decisions. Equal-boundary events without finer ordering are rejected conservatively.
 - The source tree hash and dependency-lock hash provide implementation fingerprints; a Git commit can be supplied by the surrounding checkout. Artifacts do not yet contain a separately injected Git commit identifier.
 - There is a 64 KiB request body bound, 5 MiB dataset bound, 10,000-row bound, parameter precision/range checks, and no arbitrary uploads. Opt-in public demos add persistent per-session request/run/plan/correction quotas and bounded session issuance. Hard worker CPU/time isolation and a durable job system remain future work; use the deployment guide and platform abuse protection for Internet exposure.
-- Reports are deterministic Markdown. A buildless frontend is now served by the same backend; see [Workspace usage](WORKSPACE.md). No model provider, natural-language parsing, historical data, PDF report, sponsor integration, or agent memory is claimed.
+- Reports are deterministic Markdown. A buildless frontend is now served by the same backend; see [Workspace usage](WORKSPACE.md). Optional natural-language planning is implemented with the limits in PLANNING.md; no live-provider validation, historical data, PDF report, award-platform integration, or agent memory is claimed.
 
 ## Numerical contract
 
@@ -88,3 +91,9 @@ Reproducibility is scoped to pinned inputs and implementation environment. Cross
 ## Public demo and cloud delivery
 
 See [Deployment](DEPLOYMENT.md) for HTTPS cookie configuration, persistent-disk setup, per-session allowances, retention and external verification. `python -m backend` honors `PORT` and `QUANTFORGE_HOST`; its default remains loopback unless a cloud port is supplied. It always starts one worker. The default guided diagnostic uses `timing_trap`; `leaky_next_close` remains explicitly supported with unchanged data. Comparisons now include computed changed-entry decisions when scientific configurations are comparable.
+
+## Review and export enhancements
+
+Cost sensitivity defaults now differ from current assumptions; unchanged, zero-total or invalid-precision inputs are blocked before a request. API validation errors expose only allowlisted field names, never raw input. New research reports include exact parameters, units, provenance, a bounded ledger, source evidence and reproducibility fingerprints. Comparison exports include both saved results and changed decisions. Report evidence/ledger tables disclose truncation beyond 100 records and refer to the complete scientific JSON. Previously saved reports remain immutable.
+
+Planning provenance uses new plan_context/run_context tables with foreign-key cascades; existing plans/runs without context are explicitly marked LEGACY_TEMPLATE on read. No existing scientific artifact is rewritten. Planner attempt records are reserved in SQLite and are separate from numerical experiment state.

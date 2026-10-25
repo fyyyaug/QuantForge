@@ -28,6 +28,7 @@ def main():
             QUANTFORGE_DATA_DIR=directory,
             QUANTFORGE_PUBLIC_DEMO="true",
             QUANTFORGE_COOKIE_SECURE="false",
+            QUANTFORGE_ENABLE_PLANNER="false",
         )
         process = subprocess.Popen(
             [
@@ -74,6 +75,7 @@ def main():
                         raise RuntimeError("HTTP server did not start")
                     time.sleep(0.1)
             assert health["status"] == "ok"
+            assert request("/api/evaluation")["summary"] == {"total": 26, "passed": 26}
             assert "Research workspace" in request("/")
             assert "Research dataset" in request("/assets/app.js")
             plan = request("/api/research/plans", {})
@@ -96,6 +98,9 @@ def main():
             assert "SYNTHETIC" in request(f"/api/runs/{child['run_id']}/report")
             assert comparison["decision_changes"]["changed_signals"] > 0
             assert comparison["left"]["metrics"]["total_return"] != comparison["right"]["metrics"]["total_return"]
+            exported = request(f"/api/runs/{parent}/comparison/report?other_run_id={child['run_id']}")
+            assert "Original experiment" in exported and "New experiment" in exported
+            assert "lookback_sessions" in exported and "available_at" in exported
 
             demo = build_opener(HTTPCookieProcessor(CookieJar()))
 

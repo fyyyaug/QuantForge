@@ -47,7 +47,7 @@ FastAPI and frozen Pydantic contracts validate requests. Decimal arithmetic calc
 
 **Limitations and future work**
 
-All current datasets are synthetic. Split leakage, overfitting risk, and survivorship coverage remain Unverified. Natural-language model planning, historical market data, cross-run agent memory, production account management, and distributed job execution are future work. No broker is connected and no investment performance is promised.
+All current datasets are synthetic. Split leakage, overfitting risk, and survivorship coverage remain Unverified. Optional natural-language planning is implemented but requires provider configuration and live validation before demonstration. Historical market data, cross-run agent memory, production account management and distributed execution remain future work. No broker is connected and no investment performance is promised.
 
 **Tools and prior-work disclosure**
 
@@ -64,3 +64,7 @@ The project was developed with Codex using the team's revised QuantForge whitepa
 - [ ] Record at least one independent user's task outcome if time permits.
 
 The [official Devpost overview](https://build-north.devpost.com/) currently describes an October 25, 2026, 11:59 PM ET submission deadline and an optional video of four minutes or less. A two-minute recording fits that limit and the shorter whitepaper plan. Confirm the final form at submission time.
+
+## Optional additions to the demonstration
+
+If live Claude planning has actually been configured and verified, show its proposed/defaulted parameters and exact user approval. Otherwise keep the template path and explicitly state that live planning is unverified. The auditor-evaluation view now exposes 26 generated synthetic controls, and comparison reports export both experiments. These additions do not substitute for a real user study, public deployment or an actual submission/video.
