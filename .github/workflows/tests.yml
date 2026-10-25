@@ -29,8 +29,8 @@ jobs:
       - run: python -m pytest -q --cov=backend --cov-branch --cov-fail-under=90
       - run: python scripts/smoke_http.py
       - run: node --check frontend/assets/app.js
-      - run: node --test frontend/tests/view-model.test.js
       - run: npm ci --prefix frontend
+      - run: npm test --prefix frontend
       - run: npm run format:check --prefix frontend
       - run: python scripts/evaluate_audit.py --output-dir .quantforge-evaluation
 

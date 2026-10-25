@@ -1,5 +1,7 @@
 # Research Workspace
 
+For step-by-step end-user instructions, see the [User Guide](USER_GUIDE.md).
+
 The local web workspace is implemented in buildless HTML, CSS, and JavaScript modules, served by the existing FastAPI process. There is no separate frontend server or production JavaScript dependency. Node.js is used only for development checks.
 
 ## Start
@@ -24,6 +26,8 @@ The guided diagnostic defaults to the allowlisted `timing_trap` future-close cas
 The browser draws charts from engine-provided NAV series. JavaScript converts Decimal strings to numbers only for chart coordinates and display rounding; the scientific arithmetic and stored results remain on the backend. Independent chart scales and lack of statistical significance are disclosed in comparison.
 
 ## Error and empty states
+
+If demo initialization or reconnection fails while a session is still active, the access page retains an **End existing demo session** control. Ending it explicitly revokes the cookie before a new session is requested; failed reconnection never silently replaces the session. Minute/hour rate limits still require waiting, and new sessions remain subject to the service issuance limit.
 
 - Invalid credentials leave the user outside the workspace with a reconnect message.
 - Invalid form values are rejected by native controls/client checks and again by backend contracts.

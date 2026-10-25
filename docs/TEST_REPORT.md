@@ -1,16 +1,16 @@
 # QuantForge Verification Report
 
-Date: October 25, 2026. Scope: local research-delivery improvements. No public deployment, remote CI pass, independent user study or real-provider semantic result is claimed.
+Date: October 25, 2026. Scope: local research-delivery improvements and integration with the remote demo-recovery changes. No public deployment, remote CI pass, independent user study or real-provider semantic result is claimed.
 
 ## Observed results
 
 | Check | Observed result |
 | --- | --- |
-| Backend regression | 145 passed, no warnings |
+| Backend regression | 146 passed, no warnings |
 | Statement/branch coverage | 96.33% |
 | Engine, audit, generated controls and report coverage | 100% of measured statements/branches |
 | Planner adapter coverage | 98%; simulated provider contract/error cases |
-| Frontend helper tests | 9 passed |
+| Frontend helper and session-recovery tests | 10 passed |
 | Browser regression | Chromium, desktop 1440x1050 and mobile 390x844 passed |
 | Generated audit controls | 26/26 expected outcomes matched |
 | Real HTTP smoke | Passed, private + anonymous sessions, evaluation and comparison export |
@@ -19,6 +19,8 @@ Date: October 25, 2026. Scope: local research-delivery improvements. No public d
 Environment: macOS arm64, Python 3.12.14, pinned requirements.lock, Node.js 24.22.1 and Playwright 1.62.1 / Chromium 151. Coverage measures exercised code, not complete correctness or real-world detection rates.
 
 ## Changes verified
+
+The merged error handler retains field-validation details together with session-expiry handling and demo quota/rate-limit guidance. The remote session-recovery test now supplies the evaluation response used by the home screen; it verifies explicit logout and reconnection after exhaustion. CI runs all frontend unit tests, including this regression. The complete backend, frontend, HTTP smoke and desktop/mobile browser checks above passed again after integration. The user guide now describes optional Claude planning and comparison exports.
 
 Cost forms propose values different from current costs, reject unchanged/zero-total/invalid-precision input before submission and show the actual assumption diff. The browser test specifically begins at commission 10/slippage 5, prevents submitting those unchanged values, then completes two separate approved cost corrections. Original runs remain in history.
 

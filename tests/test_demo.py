@@ -161,6 +161,24 @@ def test_request_allowance_cannot_be_reset_by_restarting(tmp_path):
         assert restarted.get("/api/runs").status_code == 429
 
 
+def test_exhausted_session_requires_explicit_logout_before_fresh_session(tmp_path):
+    policy = replace(DemoPolicy(), requests_per_session=1)
+    with TestClient(create_app(tmp_path, {}, FIXTURES, policy), headers=HEADERS) as client:
+        start(client)
+        original_cookie = client.cookies.get("quantforge_demo")
+        assert client.get("/api/runs").status_code == 200
+        assert client.get("/api/runs").status_code == 429
+        assert client.get("/api/workspace").json()["demo"]["session_active"] is True
+        start(client)
+        assert client.cookies.get("quantforge_demo") == original_cookie
+        assert client.get("/api/runs").status_code == 429
+        assert client.post("/api/demo/session/logout", json={}).status_code == 200
+        start(client)
+        assert client.cookies.get("quantforge_demo") != original_cookie
+        assert client.get("/api/runs").json() == []
+        assert client.app.state.demo.peek(original_cookie) is None
+
+
 def test_expiry_cleans_parent_child_artifacts_but_preserves_private_history(demo_client):
     access = demo_client.app.state.demo
     now = [int(access.clock())]
