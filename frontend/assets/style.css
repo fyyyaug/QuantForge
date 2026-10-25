@@ -519,6 +519,9 @@ dd {
   color: #6d8172;
 }
 .table-wrap {
+  position: relative;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -790,6 +793,43 @@ tbody tr:last-child td {
 .decision-changes > p {
   font-size: 12px;
 }
+.planner-card {
+  margin-bottom: 24px;
+}
+.planner-card p,
+.evaluation-summary p {
+  font-size: 12px;
+}
+.planner-card textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  min-height: 80px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+  font: inherit;
+  line-height: 1.6;
+  margin: 8px 0 16px;
+}
+.planner-card textarea:disabled {
+  background: #f4f6f1;
+}
+.planner-card select {
+  margin: 8px 0 16px;
+}
+.planner-card .check {
+  margin: 16px 0;
+  font-size: 12px;
+}
+.evaluation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+}
 .audit-card {
   display: flex;
   gap: 20px;
@@ -922,6 +962,7 @@ pre {
   font-size: 12px;
 }
 .notice span {
+  overflow-wrap: anywhere;
   flex: 1;
   min-width: 200px;
   line-height: 1.7;

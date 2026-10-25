@@ -12,6 +12,7 @@ from .data import DatasetCatalog, validate_data
 from .engine import ENGINE_VERSION, build_decisions, simulate
 from .errors import ResearchError
 from .models import Finding, StrategySpec
+from .reporting import comparison_report, research_report
 from .store import Store
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,7 @@ class ResearchService:
                     "spec": spec,
                     "dataset": snapshot.manifest,
                     "mode": run["mode"],
+                    "planning": run["planning"],
                     "decisions": decisions,
                     "result": result,
                     "findings": findings,
@@ -121,36 +123,13 @@ class ResearchService:
 
     @staticmethod
     def report(artifact):
-        lines = [
-            "# QuantForge Research Report",
-            "",
-            f"Admissibility: {artifact['admissibility']}",
-            f"Execution mode: {artifact['mode']}",
-            "Dataset: SYNTHETIC",
-            "",
-            "Research simulation only. No investment recommendation or guarantee of performance.",
-            "",
-        ]
-        if artifact["mode"] == "DIAGNOSTIC_INVALID":
-            lines.append("INTENTIONALLY FLAWED DIAGNOSTIC: future information was used; results are invalid.")
-        if artifact["result"] is None:
-            lines.append("No simulation result is available. No performance metrics are claimed.")
-        else:
-            for key, value in artifact["result"]["metrics"].items():
-                lines.append(f"- {key}: {value if value is not None else 'N/A'}")
-        lines.extend(["", "## Audit coverage"])
-        lines.extend(f"- {f['check_id']}: {f['status']} - {f['explanation']}" for f in artifact["findings"])
-        lines.extend(
-            [
-                "",
-                "## Limitations",
-                *artifact["dataset"]["limitations"],
-                "Unverified rules do not establish absence of bias. Costs and fills are simplified assumptions.",
-                "",
-                f"Scientific artifact hash: {artifact['scientific_hash']}",
-            ]
+        return research_report(artifact)
+
+    def comparison_report(self, workspace, left_id, right_id):
+        comparison = self.compare(workspace, left_id, right_id)
+        return comparison_report(
+            comparison, self.store.artifact(workspace, left_id), self.store.artifact(workspace, right_id)
         )
-        return "\n".join(lines) + "\n"
 
     def view(self, workspace, identity):
         run = self.store.get("runs", identity, workspace)

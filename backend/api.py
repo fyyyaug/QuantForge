@@ -20,7 +20,9 @@ from .config import DemoPolicy, enabled
 from .data import DatasetCatalog
 from .demo import DemoAccess
 from .errors import ResearchError
+from .evaluation import evaluate_audits
 from .models import Contract, Cost, StrategySpec
+from .planner import PARAMETERS, ClaudePlanner
 from .service import ResearchService
 from .store import Store
 
@@ -123,6 +125,11 @@ class EmptyRequest(Contract):
     pass
 
 
+class HypothesisRequest(Contract):
+    dataset_id: str = Field(default="clean_momentum", max_length=80)
+    hypothesis: str = Field(min_length=10, max_length=1200)
+
+
 class CorrectionRequest(Contract):
     kind: Literal["timing", "costs"]
     fee_bps_each_side: Cost = 5
@@ -142,7 +149,8 @@ def plan_view(plan):
         "approved": bool(plan["approved"]),
         "spec": spec,
         "assumptions": "Template defaults are explicit in spec; review all fields before approval.",
-        "planning_mode": "DETERMINISTIC_TEMPLATE",
+        "planning_mode": plan["planning"]["source"],
+        "planning": plan["planning"],
     }
 
 
@@ -160,7 +168,9 @@ def create_app(
     tokens: dict[str, str] | None = None,
     fixtures: Path = DEFAULT_FIXTURES,
     demo_policy: DemoPolicy | None = None,
+    planner_provider: ClaudePlanner | None = None,
 ):
+    planner_provider = planner_provider or ClaudePlanner.from_environment()
     if demo_policy is None and enabled("QUANTFORGE_PUBLIC_DEMO"):
         demo_policy = DemoPolicy()
     secure_cookie = enabled("QUANTFORGE_COOKIE_SECURE")
@@ -182,6 +192,7 @@ def create_app(
         store = Store(root / "research.sqlite3", demo_policy)
         store.recover_interrupted()
         app.state.service = ResearchService(store, DatasetCatalog(fixtures))
+        app.state.evaluation = evaluate_audits()
         app.state.demo = DemoAccess(store, demo_policy) if demo_policy else None
         if app.state.demo:
             app.state.demo.cleanup()
@@ -228,10 +239,17 @@ def create_app(
     def service():
         return app.state.service
 
-    def safe_error(code, message, status):
+    def safe_error(code, message, status, fields=None):
         return JSONResponse(
-            {"error": {"code": code, "message": message, "correlation_id": uuid4().hex}}, status_code=status
+            {"error": {"code": code, "message": message, "fields": fields or [], "correlation_id": uuid4().hex}},
+            status_code=status,
         )
+
+    def validation_fields(exc):
+        allowed = (
+            set(StrategySpec.model_fields) | set(PARAMETERS) | {"hypothesis", "revision", "spec_hash", "proposal_hash"}
+        )
+        return sorted({str(part) for error in exc.errors() for part in error["loc"] if part in allowed})
 
     @app.exception_handler(ResearchError)
     async def domain_error(request, exc):
@@ -240,11 +258,15 @@ def create_app(
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request, exc):
         # Do not echo raw input or token-bearing request fields.
-        return safe_error("INVALID_REQUEST", "Request does not match the supported contract", 422)
+        return safe_error(
+            "INVALID_REQUEST", "Check the required fields, formats and allowed ranges", 422, validation_fields(exc)
+        )
 
     @app.exception_handler(ValidationError)
     async def invalid_spec(request, exc):
-        return safe_error("INVALID_SPEC", "Strategy fields violate the supported model", 422)
+        return safe_error(
+            "INVALID_SPEC", "Check strategy field ranges, precision and sample ordering", 422, validation_fields(exc)
+        )
 
     @app.exception_handler(Exception)
     async def internal_error(request, exc):
@@ -260,6 +282,7 @@ def create_app(
         session = app.state.demo.peek(request.cookies.get(cookie_name)) if demo_policy else None
         return {
             "planning_mode": "DETERMINISTIC_TEMPLATE",
+            "planner": planner_provider.public(),
             "demo": {
                 "enabled": demo_policy is not None,
                 "session_active": session is not None,
@@ -301,6 +324,10 @@ def create_app(
     def datasets(owner: W):
         return plain(service().catalog.list())
 
+    @app.get("/api/evaluation")
+    def audit_evaluation(owner: W):
+        return app.state.evaluation
+
     @app.get("/api/runs")
     def history(owner: W, limit: int = Query(50, ge=1, le=100)):
         return service().history(owner, limit)
@@ -309,6 +336,32 @@ def create_app(
     def create_plan(body: PlanRequest, owner: W):
         spec = service().template(body.dataset_id, body.overrides)
         return plan_view(service().store.create_plan(owner, spec))
+
+    @app.post("/api/research/hypotheses")
+    def draft_hypothesis(body: HypothesisRequest, owner: W):
+        # Resolve data locally before any external call. No data rows, tokens,
+        # private reports or filesystem context are sent to the provider.
+        service().template(body.dataset_id)
+        answer, provenance = planner_provider.draft(service().store, owner, body.hypothesis)
+        if answer.status != "PLAN":
+            return {
+                "status": answer.status,
+                "reason": answer.reason,
+                "question": answer.question,
+                "message": "Clarify the requested strategy before creating a plan."
+                if answer.status == "CLARIFY"
+                else "This request is outside the supported strategy. Use the template or revise the hypothesis.",
+            }
+        try:
+            spec = service().template(body.dataset_id, answer.parameters.model_dump(exclude_none=True))
+        except (ValidationError, ResearchError):
+            raise ResearchError(
+                "PLANNER_INVALID_OUTPUT",
+                "AI proposed unsupported parameters. No plan was created; use the template.",
+                422,
+            ) from None
+        plan = service().store.create_plan(owner, spec, provenance)
+        return {"status": "PLAN", "plan": plan_view(plan)}
 
     @app.get("/api/research/plans/{plan_id}")
     def get_plan(plan_id: str, owner: W):
@@ -372,6 +425,10 @@ def create_app(
     @app.get("/api/runs/{run_id}/comparison")
     def comparison(run_id: str, other_run_id: str, owner: W):
         return service().compare(owner, run_id, other_run_id)
+
+    @app.get("/api/runs/{run_id}/comparison/report", response_class=PlainTextResponse)
+    def comparison_report(run_id: str, other_run_id: str, owner: W):
+        return service().comparison_report(owner, run_id, other_run_id)
 
     @app.post("/api/runs/{run_id}/cancel")
     def cancel(run_id: str, owner: W):

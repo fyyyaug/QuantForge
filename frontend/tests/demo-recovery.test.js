@@ -30,7 +30,8 @@ test('exhausted session can be ended after reload and replaced without clearing 
     } else if (exhausted) {
       status = 429;
       body = { error: { code: 'DEMO_QUOTA_REACHED', message: 'Request allowance exhausted.' } };
-    } else body = [];
+    } else if (path === '/api/evaluation') body = { summary: { passed: 26, total: 26 } };
+    else body = [];
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
   };
   const settle = async () => {

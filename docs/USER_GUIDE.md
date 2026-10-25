@@ -1,6 +1,6 @@
 # QuantForge User Guide
 
-QuantForge lets you review a simple strategy, run a reproducible synthetic backtest, inspect audit evidence, and approve a separate corrected experiment. All included prices are fictional. The current planner uses a fixed strategy template; it does not call a language model or place trades.
+QuantForge lets you review a simple strategy, run a reproducible synthetic backtest, inspect audit evidence, and approve a separate corrected experiment. All included prices are fictional. The editable strategy template works without a language model. An optional Claude planner can draft a supported plan when explicitly configured; every draft still requires your review and approval. QuantForge does not place trades.
 
 ## 1. Start on Windows
 
@@ -46,6 +46,10 @@ Select **Try the live demo**. No token is required for this path. Tabs in the sa
 
 Allocation fraction `1` means 100% of NAV; `0.5` means 50%. One basis point (bp) is 0.01%, so 5 bps is 0.05% per side. The signal requires a return strictly greater than the threshold. It uses the selected session's close and available history, enters at the next explicit session's open, and exits at that session's close. Initial flat sessions are expected while history accumulates. These are simplified synthetic sessions, not a real exchange calendar.
 
+### Optional natural-language planning
+
+If the server has no planner configuration, the planning panel says **not configured** and the editable template remains available. When enabled, drafting requires consent to send your hypothesis to Anthropic and does not execute an experiment. Review the returned plan before approving it. Unsupported strategies may require clarification or remain outside the supported scope. See [Planning](PLANNING.md) for configuration, limits and verification status; live-provider behavior has not yet been verified.
+
 ## 3. Read the audit
 
 Select **Inspect the audit**. Expand evidence records to inspect source rows, fields, and timestamps.
@@ -74,7 +78,7 @@ For a normal run, the audit also offers a **Cost sensitivity experiment**. Its i
 
 ## 5. Reopen and export
 
-Use **Experiments** to view the latest 50 runs in the connected workspace. Select **Open** to inspect a saved run. Opening a correction child restores its comparison with the original. Use the report and JSON download controls to save the recorded evidence. Demo history expires; private history persists on the server's configured data directory. Localhost is accessible on your computer only; teammates need their own local setup or a separately verified hosted service.
+Use **Experiments** to view the latest 50 runs in the connected workspace. Select **Open** to inspect a saved run. Opening a correction child restores its comparison with the original. Use the report and JSON download controls to save the recorded evidence. **Download comparison report** exports both experiments and their differences in one Markdown document. Demo history expires; private history persists on the server's configured data directory. Localhost is accessible on your computer only; teammates need their own local setup or a separately verified hosted service.
 
 ## 6. Troubleshooting
 

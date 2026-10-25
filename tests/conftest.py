@@ -13,6 +13,12 @@ TOKEN_A = "a" * 32
 TOKEN_B = "b" * 32
 
 
+@pytest.fixture(autouse=True)
+def no_live_model_calls(monkeypatch):
+    # Operator credentials must never turn an ordinary regression into paid inference.
+    monkeypatch.setenv("QUANTFORGE_ENABLE_PLANNER", "false")
+
+
 @pytest.fixture
 def catalog():
     return DatasetCatalog(FIXTURES)

@@ -4,10 +4,12 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "format:check": "prettier --check \"assets/*.{js,css,svg}\" index.html \"tests/*.js\" package.json",
-    "format": "prettier --write \"assets/*.{js,css,svg}\" index.html \"tests/*.js\" package.json"
+    "test:e2e": "node tests/browser.e2e.mjs",
+    "format:check": "prettier --check \"assets/*.{js,css,svg}\" index.html \"tests/*.{js,mjs}\" package.json",
+    "format": "prettier --write \"assets/*.{js,css,svg}\" index.html \"tests/*.{js,mjs}\" package.json"
   },
   "devDependencies": {
+    "playwright": "1.62.1",
     "prettier": "3.9.10"
   }
 }

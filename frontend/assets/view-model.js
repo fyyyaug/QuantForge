@@ -87,3 +87,29 @@ export function timingEvidence(evidence) {
     ['available_at', 'decision_at', 'entry_at'].every((key) => utcTimestamp(item[key]) !== 'N/A'),
   );
 }
+
+export function suggestedCosts(spec) {
+  const fee = Number(spec.fee_bps_each_side),
+    slip = Number(spec.slippage_bps_each_side);
+  const format = (value) => value.toFixed(6).replace(/\.?0+$/, '') || '0';
+  return fee + slip === 0
+    ? { correction_fee: '5', correction_slippage: '5' }
+    : {
+        correction_fee: format(fee < 1000 ? Math.min(1000, fee + 5) : fee - 5),
+        correction_slippage: format(slip),
+      };
+}
+
+export function costChangeIssue(spec, values) {
+  for (const key of ['correction_fee', 'correction_slippage']) {
+    const value = values[key];
+    if (!/^\d+(\.\d{1,6})?$/.test(value ?? '') || Number(value) > 1000)
+      return 'Enter costs from 0 to 1000 bps with at most six decimal places.';
+  }
+  const fee = Number(values.correction_fee),
+    slip = Number(values.correction_slippage);
+  if (fee + slip === 0) return 'Use at least one nonzero cost for this sensitivity experiment.';
+  if (fee === Number(spec.fee_bps_each_side) && slip === Number(spec.slippage_bps_each_side))
+    return 'Change commission or slippage before reviewing a new experiment.';
+  return null;
+}

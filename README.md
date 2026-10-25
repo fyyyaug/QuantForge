@@ -8,7 +8,7 @@ QuantForge is an AI quantitative research project that turns a constrained inves
 
 The primary user is a student researcher who can describe a simple strategy but needs help finding methodological mistakes. Independent researchers and small research teams are secondary users.
 
-> **Status: integrated workspace and bounded public-demo mode implemented; cloud deployment pending verification.** The browser workflow includes template planning, review, backtesting, timing evidence, correction approval, changed-decision comparisons, report downloads and history. Opt-in anonymous sessions isolate visitors, enforce persistent quotas and resume after a page reload. A Render Blueprint prepares a single-instance service with a persistent disk. Language-model integration, historical data, durable jobs, production accounts and memory remain future work. See [Workspace usage and verification](docs/WORKSPACE.md), [Implementation status](docs/IMPLEMENTATION.md), and [Test report](docs/TEST_REPORT.md).
+> **Status: integrated workspace and bounded public-demo mode implemented; cloud deployment pending verification.** The browser workflow includes template planning, review, backtesting, timing evidence, correction approval, changed-decision comparisons, report downloads and history. Opt-in anonymous sessions isolate visitors, enforce persistent quotas and resume after a page reload. A Render Blueprint prepares a single-instance service with a persistent disk. Optional Claude structured planning is implemented behind explicit configuration, with template fallback; real-provider validation remains pending credentials. Historical data, durable jobs, production accounts and memory remain future work. See [Workspace usage and verification](docs/WORKSPACE.md), [Implementation status](docs/IMPLEMENTATION.md), and [Test report](docs/TEST_REPORT.md).
 
 ## Why this project exists
 
@@ -40,7 +40,7 @@ The initial scope is deliberately constrained:
 - Immutable original and corrected runs, specification diffs, and comparison.
 - A web workspace with a template-first path that remains usable without an LLM.
 
-Natural-language planning, account-based saved workspaces and cross-run agent memory are later enhancements. Markdown report and scientific-JSON downloads are implemented. They are not prerequisites for validating the core pipeline.
+Optional natural-language planning is implemented; see [Planner setup and limits](docs/PLANNING.md). Account-based saved workspaces and cross-run agent memory remain later enhancements. Full Markdown research/comparison reports and scientific-JSON downloads are implemented. They are not prerequisites for validating the core pipeline.
 
 ### Example research question
 
@@ -64,7 +64,7 @@ QuantForge uses bounded specialist roles coordinated by a deterministic state ma
 | Report Writer | Explain saved results and limitations | All numeric claims must reference engine artifacts |
 | Memory Adapter (later) | Retrieve relevant, user-confirmed preferences and prior findings | Context only; cannot override the current plan |
 
-The engine calculates all metrics. The audit rule engine establishes machine-verifiable findings. AI helps plan and explain the research process.
+The engine calculates all metrics. The audit rule engine establishes machine-verifiable findings. When explicitly configured, Claude proposes bounded parameters for user review; deterministic code writes the reports. No model can approve a plan, calculate a result or change a rule verdict.
 
 See [Architecture](docs/ARCHITECTURE.md) for agent contracts, workflow, numerical semantics, audit evidence, and failure behavior.
 
@@ -94,7 +94,7 @@ Corrections create new runs. Before/after values must come from actual execution
 - **Frontend:** buildless HTML/CSS/JavaScript modules and SVG charts are implemented. The earlier Next.js/TypeScript/Tailwind proposal remains an optional future migration, not a current dependency.
 - **Backend:** FastAPI and Pydantic.
 - **Numerical engine:** Python Decimal and a small explicit execution model. pandas and NumPy are deferred; the foundation requires neither.
-- **Agent interface:** provider-independent structured planning and bounded tool invocation; Claude is the initial candidate from the whitepaper.
+- **Planner:** optional bounded Claude Messages API with JSON structured outputs, local validation, persisted call allowances and an explicit template fallback.
 - **Persistence:** SQLite for the first implementation; a production database can follow.
 - **Evaluation:** deterministic fixtures, hand-checked calculations, pytest, and an end-to-end browser smoke test.
 
@@ -171,6 +171,12 @@ Open http://127.0.0.1:8000/ and choose **Try the live demo**. The environment mu
 The guided `timing_trap` example produces a real change in selected entry sessions after the approved correction. The original equal-result diagnostic fixture remains available. No result is hard-coded into the UI.
 
 [Deployment guide](docs/DEPLOYMENT.md) documents the paid disk-backed Render Blueprint, quota/retention behavior and external-device acceptance gate. [Demo and submission preparation](docs/DEMO_AND_SUBMISSION.md) includes a two-minute recording script and honest project-description draft. A public URL, completed cloud verification and actual video are not yet claimed.
+
+## Audit controls and browser regression
+
+The workspace now includes an audit-evaluation view backed by 26 controls generated independently of the fixed demo CSVs. It shows expected versus observed outcomes, source/data fingerprints and detection counts for A01-A03. These are constructed synthetic controls, not an external blind benchmark or evidence of profitability. Reproduce with `python scripts/evaluate_audit.py`; [observed control results](docs/evaluation/README.md) include the complete case list.
+
+Run `npm ci --prefix frontend`, install the pinned Playwright Chromium (`npx playwright install --with-deps chromium` from frontend/), then run `npm run test:e2e --prefix frontend`. The local-only regression starts/stops a temporary Python server and tests desktop/mobile planning, consecutive cost corrections, report download, timing evidence, refresh/history, visitor isolation, invalid data, zero trades, evaluation and offline recovery. Set `QUANTFORGE_PYTHON` if the Python executable is not named `python`. All ordinary automated checks disable live provider calls. CI includes a separate browser job; local results do not prove its remote status.
 
 ## Data, safety, and limitations
 

@@ -7,6 +7,8 @@ import {
   humanStatus as label,
   timingEvidence,
   utcTimestamp,
+  suggestedCosts,
+  costChangeIssue,
 } from './view-model.js';
 
 const root = document.querySelector('#app');
@@ -15,6 +17,9 @@ const state = {
   accessMode: null,
   demo: null,
   ready: false,
+  planner: null,
+  evaluation: null,
+  hypothesis: '',
   screen: 'home',
   datasets: [],
   history: [],
@@ -37,6 +42,7 @@ const titles = {
   audit: 'Audit workspace',
   compare: 'Compare experiments',
   history: 'Experiment history',
+  evaluation: 'Audit evaluation',
 };
 const short = (value) => (value ? `${value.slice(0, 8)}…` : '—');
 const connected = () => Boolean(state.token || state.accessMode === 'demo');
@@ -82,7 +88,9 @@ function render() {
             ? compareView()
             : state.screen === 'audit'
               ? auditView()
-              : resultsView();
+              : state.screen === 'evaluation'
+                ? evaluationView()
+                : resultsView();
   root.innerHTML = `${nav()}<div class="workspace"><header><span class="breadcrumb">Workspace <span>/</span> ${e(titles[state.screen])}</span><div class="header-right"><span class="local-pill">${state.accessMode === 'demo' ? 'Isolated demo' : connected() ? 'Workspace connected' : 'Research access'}</span>${connected() ? button('disconnect', state.accessMode === 'demo' ? 'End demo' : 'Disconnect', 'quiet') : ''}</div></header>
     <main id="main" tabindex="-1" aria-busy="${state.busy}">${state.notice ? `<div class="notice" role="alert"><strong>${e(state.notice.title)}</strong><span>${e(state.notice.message)}</span>${button('dismiss', 'Dismiss', 'quiet')}</div>` : ''}
     ${state.accessMode === 'demo' ? `<div class="demo-session-note">Private to this browser session · Up to ${e(state.demo.limits.max_runs)} runs · Expires ${e(utcTimestamp(new Date(state.demo.expires_at * 1000).toISOString()))}. Download reports you want to keep.</div>` : ''}${state.busy ? '<div class="working" role="status"><span class="spinner"></span> Working with the research engine. Please keep this page open.</div>' : ''}${content}
@@ -107,13 +115,24 @@ function homeView() {
   const f = defaults();
   const dataset = state.datasets.find((d) => d.dataset_id === f.dataset_id);
   return `<div class="page-heading"><div><div class="eyebrow">RESEARCH / NEW EXPERIMENT</div><h1>Start with a hypothesis.</h1><p>Simple rules. Explicit assumptions. Reproducible evidence.</p></div><span class="tag">TEMPLATE PLANNING</span></div>
-    <div class="home-grid"><section class="panel"><div class="panel-top"><h2>Trailing momentum</h2><span class="tag">LONG ONLY · DAILY</span></div><p class="hypothesis">When the trailing return exceeds your threshold, enter at the next session's open and exit at its close.</p>
+    ${plannerView()}<div class="home-grid"><section class="panel"><div class="panel-top"><h2>Trailing momentum</h2><span class="tag">LONG ONLY · DAILY</span></div><p class="hypothesis">When the trailing return exceeds your threshold, enter at the next session's open and exit at its close.</p>
     <form id="plan-form"><div class="field wide"><label for="dataset">Research dataset</label><select id="dataset" name="dataset_id">${state.datasets.map((d) => `<option value="${e(d.dataset_id)}" ${d.dataset_id === f.dataset_id ? 'selected' : ''}>${e(d.dataset_id.replaceAll('_', ' '))}${d.dataset_id === 'clean_momentum' ? ' · recommended' : d.dataset_id === 'leaky_next_close' ? ' · original control' : d.dataset_id === 'timing_trap' ? ' · timing control' : ' · integrity test'}</option>`).join('')}</select><small>All fixtures are synthetic. Malformed fixtures demonstrate data validation.</small></div>
     <div class="fields">${field('lookback_sessions', 'Lookback sessions', f.lookback_sessions, 'number', 'min="1" max="252" step="1"')}${field('threshold_pct', 'Return threshold (%)', f.threshold_pct, 'number', 'min="-100" max="10000" step="any"')}${field('sample_start', 'Sample start', f.sample_start, 'date')}${field('sample_end', 'Sample end', f.sample_end, 'date')}${field('initial_nav', 'Starting capital (USD)', f.initial_nav, 'number', 'min="0.000000000001" max="1000000000000" step="any"')}${field('allocation_fraction', 'Allocation fraction', f.allocation_fraction, 'number', 'min="0.000000000001" max="1" step="any"')}${field('fee_bps_each_side', 'Commission (bps / side)', f.fee_bps_each_side, 'number', 'min="0" max="1000" step="any"')}${field('slippage_bps_each_side', 'Slippage (bps / side)', f.slippage_bps_each_side, 'number', 'min="0" max="1000" step="any"')}</div>
     <div class="form-bottom"><span>Review the exact plan before any execution.</span><button type="submit" class="primary" ${state.busy ? 'disabled' : ''}>Review plan <span>→</span></button></div></form></section>
     <div class="right-stack"><section class="panel dataset-card"><div class="section-number">DATA TRANSPARENCY</div><h3>Fictional prices.<br>Real calculations.</h3><dl><dt>Symbol</dt><dd>${e(dataset?.symbol)}</dd><dt>Source</dt><dd>QuantForge synthetic fixture</dd><dt>Calendar</dt><dd>Explicit synthetic sessions · UTC</dd><dt>Coverage</dt><dd>${e(dataset?.start_session)} — ${e(dataset?.end_session)}</dd><dt>Data license</dt><dd>${e(dataset?.license)}</dd></dl><span class="tag">SYNTHETIC · NOT MARKET HISTORY</span></section>
     <section class="demo-card"><div class="section-number">GUIDED DIAGNOSTIC</div><h3>Can you spot<br>tomorrow's information?</h3><p>Run an intentionally flawed experiment, inspect the timing evidence, then approve a correction.</p>${button('diagnostic-review', 'Review diagnostic example <span>↗</span>', 'light')}</section></div></div>
-    <section class="recent-section"><div class="section-heading"><h2>Recent experiments</h2><a href="#history">View all →</a></div>${historyTable(state.history.slice(0, 4))}</section>`;
+    <section class="panel evaluation-summary"><div><h2>Check the auditor, too.</h2><p>${e(state.evaluation?.summary.passed ?? '—')} of ${e(state.evaluation?.summary.total ?? '—')} synthetic controls match their expected outcomes. These controls cover three rules, not market profitability.</p></div>${button('evaluation', 'Inspect audit evaluation →')}</section><section class="recent-section"><div class="section-heading"><h2>Recent experiments</h2><a href="#history">View all →</a></div>${historyTable(state.history.slice(0, 4))}</section>`;
+}
+function plannerView() {
+  if (!state.planner?.available)
+    return `<details class="panel planner-card"><summary>Optional natural-language planning · not configured</summary><p>${e(state.planner?.message ?? 'Use the editable template below.')}</p><button type="button" class="secondary" disabled>Draft a plan for review →</button></details>`;
+  return `<section class="panel planner-card"><div class="panel-top"><h2>Start from your own hypothesis.</h2><span class="tag">${state.planner?.available ? 'OPTIONAL AI PLANNING' : 'AI NOT CONFIGURED'}</span></div><p>${e(state.planner?.message ?? 'Use the editable template below.')}</p><form id="hypothesis-form"><label for="hypothesis">Daily trailing-momentum hypothesis</label><textarea id="hypothesis" name="hypothesis" rows="2" minlength="10" maxlength="1200" required ${state.planner?.available ? '' : 'disabled'} placeholder="If the trailing five-session return exceeds 2%, enter at the next session open and exit at its close.">${e(state.hypothesis)}</textarea><label for="hypothesis-dataset">Dataset</label><select id="hypothesis-dataset" name="dataset_id">${state.datasets.map((d) => `<option value="${e(d.dataset_id)}">${e(d.dataset_id.replaceAll('_', ' '))} · synthetic</option>`).join('')}</select><label class="check"><input type="checkbox" required ${state.planner?.available ? '' : 'disabled'}><span>I agree to send this hypothesis to Anthropic. I will not include secrets or personal information.</span></label><button class="secondary" type="submit" ${state.busy || !state.planner?.available ? 'disabled' : ''}>Draft a plan for review →</button><p class="fine">A draft cannot approve itself. Unsupported strategies require clarification or stay outside the supported scope. Template planning below needs no model.</p></form></section>`;
+}
+
+function evaluationView() {
+  const evaluation = state.evaluation;
+  if (!evaluation) return '<h1>No evaluation loaded</h1>';
+  return `<div class="page-heading"><div><div class="eyebrow">EVALUATION / SYNTHETIC CONTROLS</div><h1>Evidence for the auditor.</h1><p>${e(evaluation.scope)}</p></div></div><section class="panel"><h2>${e(evaluation.summary.passed)} / ${e(evaluation.summary.total)} expected outcomes matched</h2><p>${e(evaluation.limitations)}</p><div class="table-wrap"><table><thead><tr><th>Control</th><th>Rule</th><th>Expected</th><th>Observed</th><th>Result</th></tr></thead><tbody>${evaluation.cases.map((c) => `<tr><td>${e(c.case_id)}</td><td>${e(c.check_id)}</td><td>${e(c.expected)}</td><td>${e(c.actual)}</td><td>${c.passed ? 'Matched' : 'Mismatch'}</td></tr>`).join('')}</tbody></table></div><details><summary>Generation, rule versions and detection counts</summary><pre>${e(JSON.stringify({ generation: evaluation.generation, detection: evaluation.detection, versions: evaluation.versions }, null, 2))}</pre></details><div class="actions">${button('download-evaluation', 'Download evaluation JSON')}${button('home', 'Back to research')}</div></section>`;
 }
 function field(name, title, value, type, attrs = '') {
   return `<div class="field"><label for="${name}">${title}</label><input id="${name}" name="${name}" type="${type}" value="${e(value)}" required ${attrs}></div>`;
@@ -134,7 +153,7 @@ function steps(active) {
 function reviewView() {
   const spec = state.plan?.spec;
   if (!state.diagnostic && !spec) return '<h1>No plan to review</h1><a href="#home">Create an experiment</a>';
-  return `${steps('review')}<div class="page-heading"><div><div class="eyebrow">01 / REVIEW</div><h1>${state.diagnostic ? 'An intentional timing mistake.' : 'Make the assumptions explicit.'}</h1><p>${state.diagnostic ? 'This demonstration uses future information. Its results will remain invalid.' : 'Check the exact specification before approving an experiment.'}</p></div>${badge(state.diagnostic ? 'DIAGNOSTIC_INVALID' : 'UNVERIFIED')}</div>
+  return `${steps('review')}${state.plan?.planning_mode === 'CLAUDE_STRUCTURED' ? `<div class="info-box">AI-proposed draft. Review every parameter. Template defaults were used for: ${e(state.plan.planning.defaulted_fields.join(', ').replaceAll('_', ' ')) || 'none'}.</div>` : ''}<div class="page-heading"><div><div class="eyebrow">01 / REVIEW</div><h1>${state.diagnostic ? 'An intentional timing mistake.' : 'Make the assumptions explicit.'}</h1><p>${state.diagnostic ? 'This demonstration uses future information. Its results will remain invalid.' : 'Check the exact specification before approving an experiment.'}</p></div>${badge(state.diagnostic ? 'DIAGNOSTIC_INVALID' : 'UNVERIFIED')}</div>
     ${
       state.diagnostic
         ? `<section class="panel"><h2>Diagnostic: future close before an open fill</h2><div class="warning-box">Synthetic, intentionally flawed. The signal reads close(t+1) even though entry happens at open(t+1). This is not an admissible research strategy.</div><p>The timing trap deliberately alternates price moves around the signal threshold. Inspect how tomorrow's information changes the selected trades, then approve a separate corrected experiment. Every metric is calculated by the engine.</p></section>`
@@ -196,9 +215,16 @@ function auditView() {
         f,
       ) => `<section class="panel audit-card"><div class="audit-icon ${f.status === 'FAIL' ? 'fail' : f.status === 'PASS' ? 'pass' : 'unknown'}">${f.status === 'PASS' ? '✓' : f.status === 'FAIL' ? '!' : '·'}</div><div class="audit-body"><div class="panel-top"><div><div class="section-number">${e(f.check_id)} / RULE ${e(f.rule_version)}</div><h2>${e(names[f.check_id] ?? f.check_id)}</h2></div>${badge(f.status)}</div><p>${e(f.explanation)}</p><div class="fine">Severity: ${e(f.severity)} · Execution effect: ${e(f.execution_effect)}</div>${f.evidence.length ? `<details ${f.status === 'FAIL' ? 'open' : ''}><summary>Inspect ${f.evidence.length} evidence record${f.evidence.length === 1 ? '' : 's'}</summary><pre>${e(JSON.stringify(f.evidence, null, 2))}</pre></details>` : ''}
     ${f.check_id === 'A01_LOOKAHEAD' && a.mode === 'DIAGNOSTIC_INVALID' ? `<div class="fix-note"><h3>Proposed direction</h3><p>Remove the future-close dependency and recalculate with information available at session t. This changes the signal's economic meaning.</p>${button('propose-timing', 'Review timing correction <span>→</span>', 'primary')}</div>` : ''}
-    ${f.check_id === 'A02_MISSING_COSTS' && a.mode === 'RESEARCH' && a.result?.trades.length ? `<form id="cost-form" class="cost-form"><h3>Cost sensitivity experiment</h3><div class="fields">${field('correction_fee', 'Commission (bps / side)', Number(a.spec.fee_bps_each_side) === 0 ? '5' : '10', 'number', 'min="0" max="1000" step="any"')}${field('correction_slippage', 'Slippage (bps / side)', '5', 'number', 'min="0" max="1000" step="any"')}</div><button type="submit" class="secondary" ${state.busy ? 'disabled' : ''}>Review cost change →</button></form>` : ''}</div></section>`,
+    ${f.check_id === 'A02_MISSING_COSTS' && a.mode === 'RESEARCH' && a.result?.trades.length ? costForm(a) : ''}</div></section>`,
     )
     .join('')}</div>`;
+}
+function costForm(artifact) {
+  const proposal = suggestedCosts(artifact.spec);
+  return `<form id="cost-form" class="cost-form"><h3>Cost sensitivity experiment</h3><div class="fields">${field('correction_fee', 'Commission (bps / side)', proposal.correction_fee, 'number', 'min="0" max="1000" step="0.000001"')}${field('correction_slippage', 'Slippage (bps / side)', proposal.correction_slippage, 'number', 'min="0" max="1000" step="0.000001"')}</div><p id="cost-change-status" role="status">${e(costDescription(artifact.spec, proposal))}</p><button type="submit" class="secondary" ${state.busy ? 'disabled' : ''}>Review cost change →</button></form>`;
+}
+function costDescription(spec, values) {
+  return `Commission: ${spec.fee_bps_each_side} → ${values.correction_fee} bps per side. Slippage: ${spec.slippage_bps_each_side} → ${values.correction_slippage} bps per side. A separate run will be computed.`;
 }
 function timingTimeline(findings) {
   const finding = findings.find((f) => f.check_id === 'A01_LOOKAHEAD' && f.status === 'FAIL');
@@ -236,7 +262,7 @@ function compareView() {
         `<section class="panel"><div class="panel-top"><h2>${title}</h2>${badge(item.admissibility)}</div><p class="mono">${e(id)}</p><span class="tag">${e(a?.mode)} · SYNTHETIC</span>${a?.result ? `<div class="compare-metrics"><div><small>Total return</small><strong>${percent(item.metrics.total_return)}</strong></div><div><small>Max drawdown</small><strong>${percent(item.metrics.max_drawdown)}</strong></div></div>${chart(a.result, title + ' NAV')}` : '<p>No simulation result available.</p>'}</section>`,
     )
     .join('')}</div>
-    ${decisionChanges(c)}<section class="panel"><h2>Recorded differences</h2><pre>${e(JSON.stringify({ specification: c.spec_diff, execution_mode: c.mode_diff }, null, 2))}</pre><p class="fine">Charts use their own labeled NAV scales. No silent rescaling, alignment, or statistical significance is implied. Identical metrics do not establish identical methodology; an invalid information dependency is still invalid.</p><div class="actions">${button('audit-original', 'Audit original experiment')}${button('audit', 'Audit new experiment', 'primary')}${button('download-report', 'Download new report')}</div></section>`;
+    ${decisionChanges(c)}<section class="panel"><h2>Recorded differences</h2><pre>${e(JSON.stringify({ specification: c.spec_diff, execution_mode: c.mode_diff }, null, 2))}</pre><p class="fine">Charts use their own labeled NAV scales. No silent rescaling, alignment, or statistical significance is implied. Identical metrics do not establish identical methodology; an invalid information dependency is still invalid.</p><div class="actions">${button('audit-original', 'Audit original experiment')}${button('audit', 'Audit new experiment', 'primary')}${button('download-comparison', 'Download comparison report')}${button('download-report', 'Download new report')}</div></section>`;
 }
 function historyTable(rows) {
   return `<div class="table-wrap"><table><caption class="sr-only">Recent saved experiments</caption><thead><tr><th>Experiment</th><th>Dataset</th><th>Mode</th><th>State</th><th>Created</th><th><span class="sr-only">Action</span></th></tr></thead><tbody>${rows.length ? rows.map((r) => `<tr><td class="mono">${e(short(r.run_id))}${r.parent_run_id ? '<small class="child-note">↳ correction child</small>' : ''}</td><td>${e(r.dataset_id)}</td><td>${r.execution_mode === 'DIAGNOSTIC_INVALID' ? badge('DIAGNOSTIC_INVALID') : 'Research'}</td><td>${e(r.state)}</td><td>${e(new Date(r.created_at).toLocaleString())}</td><td>${button('open-run', 'Open →', 'quiet', `data-id="${e(r.run_id)}"`)}</td></tr>`).join('') : '<tr><td colspan="6" class="empty-row">Your first experiment starts with a question. Create a plan above.</td></tr>'}</tbody></table></div>`;
@@ -256,6 +282,10 @@ const errorMessages = {
     'Your demo session ended. Open a new demo to continue. Download reports before ending a session.',
   ORIGIN_REJECTED: 'Open the research workspace on this same site and try again.',
   STATE_CONFLICT: 'The experiment state no longer permits that action.',
+  PLANNER_UNAVAILABLE: 'AI planning is unavailable. No plan was created. Use the editable template below.',
+  PLANNER_INVALID_OUTPUT:
+    'The AI draft did not meet the supported contract. Use the template or revise your hypothesis.',
+  PLANNER_LIMIT_REACHED: 'The AI planning allowance is reached. The editable template is still available.',
 };
 async function api(path, { method = 'GET', body, key } = {}) {
   const controller = new AbortController(),
@@ -280,11 +310,11 @@ async function api(path, { method = 'GET', body, key } = {}) {
       const code = data?.error?.code ?? 'REQUEST_FAILED';
       if (response.status === 401 && connected()) resetWorkspace();
       if (code === 'SESSION_EXPIRED' && state.demo) state.demo.session_active = false;
-      throw new Error(
-        ['DEMO_QUOTA_REACHED', 'DEMO_RATE_LIMIT'].includes(code)
-          ? `${data?.error?.message ?? 'Demo limit reached.'} ${code === 'DEMO_RATE_LIMIT' ? 'Wait for the limit window to reset, then retry.' : 'You can end the demo using End demo or End existing demo session. Starting another session is subject to service capacity.'}`
-          : (errorMessages[code] ?? `${code}: ${data?.error?.message ?? 'Request could not be completed.'}`),
-      );
+      const fields = data?.error?.fields ?? [];
+      const message = ['DEMO_QUOTA_REACHED', 'DEMO_RATE_LIMIT'].includes(code)
+        ? `${data?.error?.message ?? 'Demo limit reached.'} ${code === 'DEMO_RATE_LIMIT' ? 'Wait for the limit window to reset, then retry.' : 'You can end the demo using End demo or End existing demo session. Starting another session is subject to service capacity.'}`
+        : (errorMessages[code] ?? `${code}: ${data?.error?.message ?? 'Request could not be completed.'}`);
+      throw new Error(message + (fields.length ? ` Check: ${fields.join(', ').replaceAll('_', ' ')}.` : ''));
     }
     return data;
   } catch (error) {
@@ -341,12 +371,19 @@ function resetWorkspace() {
     screen: 'home',
     diagnostic: false,
     runKey: null,
+    evaluation: null,
+    hypothesis: '',
   });
 }
 async function connectWorkspace() {
-  const [datasets, runs] = await Promise.all([api('/api/datasets'), api('/api/runs')]);
+  const [datasets, runs, evaluation] = await Promise.all([
+    api('/api/datasets'),
+    api('/api/runs'),
+    api('/api/evaluation'),
+  ]);
   state.datasets = datasets;
   state.history = runs;
+  state.evaluation = evaluation;
   state.screen = 'home';
 }
 async function loadRun(id) {
@@ -390,11 +427,58 @@ root.addEventListener('change', (event) => {
     render();
   }
 });
+root.addEventListener('input', (event) => {
+  const form = event.target.closest('#cost-form');
+  if (!form || !state.artifact) return;
+  const values = Object.fromEntries(new FormData(form));
+  const issue = costChangeIssue(state.artifact.spec, values);
+  form.querySelector('button[type="submit"]').disabled = state.busy || Boolean(issue);
+  form.querySelector('#cost-change-status').textContent =
+    issue ?? costDescription(state.artifact.spec, values);
+});
 root.addEventListener('submit', (event) => {
   event.preventDefault();
   const form = event.target;
   if (!form.reportValidity()) return;
   const values = Object.fromEntries(new FormData(form));
+  if (form.id === 'hypothesis-form') {
+    state.hypothesis = values.hypothesis;
+    task(async () => {
+      const draft = await api('/api/research/hypotheses', { method: 'POST', body: values });
+      if (draft.status !== 'PLAN') {
+        state.notice = {
+          title: draft.status === 'CLARIFY' ? 'Clarify your hypothesis' : 'Outside the supported scope',
+          message: draft.question || draft.message,
+        };
+        return;
+      }
+      state.plan = draft.plan;
+      state.form = {
+        dataset_id: draft.plan.spec.dataset_id,
+        ...Object.fromEntries(
+          [
+            'sample_start',
+            'sample_end',
+            'lookback_sessions',
+            'threshold_pct',
+            'initial_nav',
+            'allocation_fraction',
+            'fee_bps_each_side',
+            'slippage_bps_each_side',
+          ].map((key) => [key, String(draft.plan.spec[key])]),
+        ),
+      };
+      Object.assign(state, {
+        run: null,
+        artifact: null,
+        comparison: null,
+        original: null,
+        diagnostic: false,
+        runKey: crypto.randomUUID(),
+        screen: 'review',
+      });
+    });
+  }
   if (form.id === 'connect-form')
     task(async () => {
       state.token = values.token.trim();
@@ -442,7 +526,7 @@ root.addEventListener('submit', (event) => {
       state.screen = 'results';
       await history();
     });
-  if (form.id === 'cost-form')
+  if (form.id === 'cost-form' && !costChangeIssue(state.artifact.spec, values))
     task(async () => {
       state.correction = await api(`/api/runs/${state.run.run_id}/corrections`, {
         method: 'POST',
@@ -495,7 +579,7 @@ root.addEventListener('click', (event) => {
         throw error;
       }
     });
-  if (['results', 'audit', 'compare', 'review'].includes(action)) navigate(action);
+  if (['results', 'audit', 'compare', 'review', 'evaluation', 'home'].includes(action)) navigate(action);
   if (action === 'dismiss') {
     state.notice = null;
     render();
@@ -559,7 +643,29 @@ root.addEventListener('click', (event) => {
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  if (action === 'download-comparison')
+    task(async () => {
+      const c = state.comparison;
+      const report = await api(`/api/runs/${c.left_run_id}/comparison/report?other_run_id=${c.right_run_id}`);
+      download(report, 'text/markdown', `quantforge-comparison-${c.left_run_id}-${c.right_run_id}.md`);
+    });
+  if (action === 'download-evaluation')
+    download(
+      JSON.stringify(state.evaluation, null, 2),
+      'application/json',
+      'quantforge-audit-evaluation.json',
+    );
 });
+function download(content, type, filename) {
+  const url = URL.createObjectURL(new Blob([content], { type })),
+    link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 document.addEventListener('keydown', (event) => {
   if (!state.correction) return;
   if (event.key === 'Escape' && !state.busy) {
@@ -588,6 +694,7 @@ async function initialize() {
   try {
     const config = await api('/api/workspace');
     state.demo = config.demo;
+    state.planner = config.planner;
     if (state.demo.session_active) {
       state.accessMode = 'demo';
       await connectWorkspace();
