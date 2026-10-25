@@ -51,7 +51,30 @@ All current datasets are synthetic. Split leakage, overfitting risk, and survivo
 
 **Tools and prior-work disclosure**
 
-The project was developed with Codex using the team's revised QuantForge whitepaper. Before submission, add the actual team members, development dates, starting code/templates, and changes made during Build Week, checked against version history. Do not claim an integration merely because it appears in the design. Render deployment is not evidence of Clerk, Eon, Expo, or SurrealDB integration.
+QuantForge is a two-person project by **Xuefeng Qin** (GitHub: [fyyyaug](https://github.com/fyyyaug)) and **Lucas Chu** (GitHub: [Lucccccys](https://github.com/Lucccccys)).
+
+We used **OpenAI Codex** to assist with architecture, documentation, code generation and editing, test development, debugging, and verification. AI-assisted development does not mean that a model runs inside the shipped application: the current application uses deterministic template planning, numerical execution, audit rules, and report generation. No runtime Claude or OpenAI model integration is claimed.
+
+The design input was the team's **QuantForge Build North Whitepaper, Revised V2.0, dated October 24, 2026**. Repository history starts with an initial scaffold and planning documents, followed by application implementation. The reviewed history records the backend, web workspace, and anonymous-demo implementation on **October 24, 2026 (America/Toronto)**. We distinguish these implemented features from future capabilities described in the whitepaper.
+
+The implementation uses third-party libraries and development tools, including Python, FastAPI, Pydantic, Uvicorn, SQLite, pytest, Ruff, Node.js, and Prettier. Dependency versions are recorded in `requirements.lock` and `frontend/package-lock.json`. These tools and libraries are existing third-party work, not team-authored components. The reviewed source does not identify an imported application starter or UI template; the application's supported strategy templates are its own constrained research inputs, not a claim to have invented momentum investing or backtesting.
+
+All bundled market-price fixtures are project-generated synthetic data, explicitly labeled as such, with a CC0-1.0 data declaration. They are not licensed historical exchange data or evidence of investment performance. The software itself has no selected license; the fixture declaration does not license the application code.
+
+The repository includes a Render deployment blueprint. A configuration file does not establish a completed deployment. Clerk, Eon Era, Expo, and SurrealDB Agent Memory integrations are not implemented or claimed. Any sponsor-use statement must describe actual verified use.
+
+### Recorded development contributions
+
+The following summarizes commits associated with each member's account. It is a record of submitted changes, not a claim that every line was written manually or by one person alone.
+
+| Member | Changes recorded in repository history | Example commits |
+| --- | --- | --- |
+| Xuefeng Qin | Project documentation and architecture; deterministic backtest and audit backend; SQLite persistence and API; integrated web workspace; startup diagnostics; exhausted-demo recovery and English user guide | `cf5d9e1`, `1523650`, `b25a6bf`, `df8f8ad` |
+| Lucas Chu | Isolated anonymous demo sessions, persistent quotas and expiry; timing-trap dataset; audit timeline and changed-entry comparisons; cloud startup settings, Render blueprint, deployment and demo documentation | `768ab18` |
+
+Together, these changes implement the supported strategy review, actual numerical backtest, three evidence-backed audit categories, explicitly approved correction runs, preserved parent/child history, exports, anonymous-demo access, and automated verification. Natural-language model planning, cross-run agent memory, production accounts, real market-data integration, and distributed workers remain future work.
+
+Before copying this disclosure into the final submission, both members should add any development tools, reused assets, or work outside the reviewed repository that are not captured here. Repository timestamps establish recorded commits, not the creation date of every design idea or the absence of unrecorded prior work. Team eligibility and event registration must be confirmed separately; names and commit history do not establish eligibility.
 
 ## Remaining external deliverables
 
@@ -59,7 +82,8 @@ The project was developed with Codex using the team's revised QuantForge whitepa
 - [ ] Record and upload the actual demo video; verify an anonymous viewer can play it.
 - [ ] Confirm repository visibility and review its contents before any public release.
 - [ ] Choose a software license with the team's agreement; the synthetic data's CC0 declaration is separate.
-- [ ] Complete real team/prior-work disclosures and any partner-use evidence.
+- [x] Document both team members and the repository-backed development / AI-tool disclosure above.
+- [ ] Have both members confirm any unrecorded prior work, additional tools or assets, and actual partner use; copy the final disclosure into Devpost.
 - [ ] Fill the Devpost project form and verify all links before submitting.
 - [ ] Record at least one independent user's task outcome if time permits.
 

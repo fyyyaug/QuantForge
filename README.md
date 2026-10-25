@@ -192,6 +192,8 @@ The repository is currently private. Any future public release requires a separa
 
 ## Integrations and disclosures
 
+QuantForge is built by **Xuefeng Qin** ([fyyyaug](https://github.com/fyyyaug)) and **Lucas Chu** ([Lucccccys](https://github.com/Lucccccys)). See [Team, contributions, and development disclosure](docs/DEMO_AND_SUBMISSION.md#tools-and-prior-work-disclosure) for recorded contributions, AI-assisted development, starting materials, third-party dependencies, and implementation limits.
+
 Clerk, SurrealDB Agent Memory, Eon Era, Expo, and hosting providers are optional candidates discussed in the source whitepaper. None is claimed as integrated. Cross-run memory must affect an observable planning decision before it is described as agent memory.
 
 Documentation and the backend foundation were developed with Codex from the team's revised QuantForge whitepaper dated October 24, 2026. Target-design documents include future capabilities; implementation and measured verification are tracked separately. Competition requirements and submission eligibility have not been independently verified here.
