@@ -1,4 +1,4 @@
-name: Backend foundation
+name: QuantForge checks
 
 on:
   push:
@@ -12,15 +12,48 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python: ['3.11', '3.12']
+        python: ["3.11", "3.12"]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
       - run: python -m pip install -r requirements.lock
       - run: python -m ruff check backend scripts tests
       - run: python -m ruff format --check backend scripts tests
       - run: python -m pytest -q --cov=backend --cov-branch --cov-fail-under=90
       - run: python scripts/smoke_http.py
+      - run: node --check frontend/assets/app.js
+      - run: npm ci --prefix frontend
+      - run: npm test --prefix frontend
+      - run: npm run format:check --prefix frontend
+      - run: python scripts/evaluate_audit.py --output-dir .quantforge-evaluation
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: python -m pip install -r requirements.lock
+      - run: npm ci --prefix frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:e2e --prefix frontend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-browser-regression
+          path: .quantforge-browser-tests/
+          include-hidden-files: true
+          retention-days: 3

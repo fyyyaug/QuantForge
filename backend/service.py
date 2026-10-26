@@ -12,6 +12,7 @@ from .data import DatasetCatalog, validate_data
 from .engine import ENGINE_VERSION, build_decisions, simulate
 from .errors import ResearchError
 from .models import Finding, StrategySpec
+from .reporting import comparison_report, research_report
 from .store import Store
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,7 @@ class ResearchService:
                     "spec": spec,
                     "dataset": snapshot.manifest,
                     "mode": run["mode"],
+                    "planning": run["planning"],
                     "decisions": decisions,
                     "result": result,
                     "findings": findings,
@@ -121,36 +123,13 @@ class ResearchService:
 
     @staticmethod
     def report(artifact):
-        lines = [
-            "# QuantForge Research Report",
-            "",
-            f"Admissibility: {artifact['admissibility']}",
-            f"Execution mode: {artifact['mode']}",
-            "Dataset: SYNTHETIC",
-            "",
-            "Research simulation only. No investment recommendation or guarantee of performance.",
-            "",
-        ]
-        if artifact["mode"] == "DIAGNOSTIC_INVALID":
-            lines.append("INTENTIONALLY FLAWED DIAGNOSTIC: future information was used; results are invalid.")
-        if artifact["result"] is None:
-            lines.append("No simulation result is available. No performance metrics are claimed.")
-        else:
-            for key, value in artifact["result"]["metrics"].items():
-                lines.append(f"- {key}: {value if value is not None else 'N/A'}")
-        lines.extend(["", "## Audit coverage"])
-        lines.extend(f"- {f['check_id']}: {f['status']} - {f['explanation']}" for f in artifact["findings"])
-        lines.extend(
-            [
-                "",
-                "## Limitations",
-                *artifact["dataset"]["limitations"],
-                "Unverified rules do not establish absence of bias. Costs and fills are simplified assumptions.",
-                "",
-                f"Scientific artifact hash: {artifact['scientific_hash']}",
-            ]
+        return research_report(artifact)
+
+    def comparison_report(self, workspace, left_id, right_id):
+        comparison = self.compare(workspace, left_id, right_id)
+        return comparison_report(
+            comparison, self.store.artifact(workspace, left_id), self.store.artifact(workspace, right_id)
         )
-        return "\n".join(lines) + "\n"
 
     def view(self, workspace, identity):
         run = self.store.get("runs", identity, workspace)
@@ -165,6 +144,19 @@ class ResearchService:
             "created_at": run["created_at"],
             "updated_at": run["updated_at"],
         }
+
+    def history(self, workspace, limit=50):
+        return [
+            {
+                **self.view(workspace, row["id"]),
+                "symbol": plain(row_spec.symbol),
+                "dataset_id": row_spec.dataset_id,
+                "sample_start": str(row_spec.sample_start),
+                "sample_end": str(row_spec.sample_end),
+            }
+            for row in self.store.list_runs(workspace, limit)
+            for row_spec in [StrategySpec.model_validate_json(row["spec"])]
+        ]
 
     def propose(self, workspace, identity, kind, fee="5", slippage="5"):
         artifact = self.store.artifact(workspace, identity)
@@ -225,12 +217,33 @@ class ResearchService:
             classification = "METHODOLOGY_CORRECTION"
         else:
             classification = "CONTROLLED_ASSUMPTION_CHANGE" if diff else "IDENTICAL_CONFIGURATION"
+        decision_changes = None
+        if same_data and left["versions"] == right["versions"] and classification != "NOT_DIRECTLY_COMPARABLE":
+            previous = {d["entry_at"]: d for d in left["decisions"]}
+            changed = [
+                {
+                    "entry_at": d["entry_at"],
+                    "before_feature": previous[d["entry_at"]]["feature_value"],
+                    "after_feature": d["feature_value"],
+                    "before_triggered": previous[d["entry_at"]]["triggered"],
+                    "after_triggered": d["triggered"],
+                }
+                for d in right["decisions"]
+                if d["entry_at"] in previous and d["triggered"] != previous[d["entry_at"]]["triggered"]
+            ]
+            decision_changes = {
+                "changed_signals": len(changed),
+                "changes": changed,
+                "before_trade_count": len(left["result"]["trades"]) if left["result"] else None,
+                "after_trade_count": len(right["result"]["trades"]) if right["result"] else None,
+            }
         return {
             "left_run_id": left_id,
             "right_run_id": right_id,
             "classification": classification,
             "spec_diff": diff,
             "mode_diff": {"before": left["mode"], "after": right["mode"]},
+            "decision_changes": decision_changes,
             "left": {
                 "admissibility": left["admissibility"],
                 "metrics": left["result"]["metrics"] if left["result"] else None,

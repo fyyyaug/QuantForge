@@ -1,0 +1,401 @@
+{
+  "schema_version": "1",
+  "scope": "Generated synthetic controls for A01 timing, A02 costs and A03 data integrity.",
+  "limitations": "Not an external blind benchmark or a market backtest. Constructed controls do not establish profitability, arbitrary-strategy coverage or real-world detection rates. A04-A06 remain Unverified.",
+  "generation": {
+    "version": "seeded_controls_v1",
+    "seeds": [
+      104729,
+      130363
+    ],
+    "dataset_hashes": [
+      "66f31f5d6a12695e0cde944d3c325e565fb9b5005242c9a7c3f6fb5568bb94c5",
+      "c3bd50b20cac878149f1169e67db20cefb64bbe6da01a32d57a72509cc2aa3b5",
+      "6c2b1d77d86150c2bc9c78967a065a4becba61250be3cf6b8a76ebae3016b0f6",
+      "de9c728d93d9349715551479fb3dd7c233cf61e10b735f1eb243414ce814835a",
+      "5809b10de651f9fa6c7b862321446b49c37d0f1fc30ec9a0d719b910a176cb0f",
+      "6ed28743503ac99f57d74366fe5e19dad6c2ae799563315c08e7b2fe1f28d54e",
+      "d9ccfd920f426cabb8994c53cfc157de994a3c1d596592cc7ca777273c5254eb",
+      "e9a30e925a0559b2362d79dcf34b00e7e9bf0d742c52f0f62f90c0164c477b2f",
+      "e4e626b91452e7ab488e64f4a2d7f1af0db724d290bb32da626ee00a33f4c531",
+      "72cb5521684a40e26b8c15dd9aa6f14be7493c06e42685afac9ef9a412c58725",
+      "d479aa9f188e6f8c9a4da3a812cbe10d7dd5e548325755e244ce7f6218a6135a",
+      "60c773f2cf5848a16334fa80f6a68818aba60a400b4390cb6971a590e1f0ca6a"
+    ]
+  },
+  "versions": {
+    "engine": "decimal_daily_v1",
+    "rules": "1",
+    "source_hash": "0bbc5ec295bd282ec9d5bae5d54a670e888d16c8c3126f2d545f80da745850f9"
+  },
+  "summary": {
+    "total": 26,
+    "passed": 26
+  },
+  "detection": {
+    "A01_LOOKAHEAD": {
+      "true_positive": 8,
+      "false_positive": 0,
+      "false_negative": 0,
+      "true_negative": 2
+    },
+    "A02_MISSING_COSTS": {
+      "true_positive": 2,
+      "false_positive": 0,
+      "false_negative": 0,
+      "true_negative": 2
+    },
+    "A03_DATA_INTEGRITY": {
+      "true_positive": 10,
+      "false_positive": 0,
+      "false_negative": 0,
+      "true_negative": 2
+    }
+  },
+  "cases": [
+    {
+      "case_id": "valid_data_seed_104729",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "PASS",
+      "actual": "PASS",
+      "passed": true,
+      "evidence_count": 0,
+      "first_evidence": null
+    },
+    {
+      "case_id": "lawful_timing_seed_104729",
+      "check_id": "A01_LOOKAHEAD",
+      "expected": "PASS",
+      "actual": "PASS",
+      "passed": true,
+      "evidence_count": 0,
+      "first_evidence": null
+    },
+    {
+      "case_id": "future_close_seed_104729",
+      "check_id": "A01_LOOKAHEAD",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 18,
+      "first_evidence": {
+        "decision_id": "decision-5",
+        "field": "close",
+        "row_number": 8,
+        "source_session": "2026-02-10",
+        "available_at": "2026-02-10T16:00:00+00:00",
+        "decision_at": "2026-02-09T16:00:01+00:00",
+        "entry_at": "2026-02-10T09:30:00+00:00"
+      }
+    },
+    {
+      "case_id": "after_decision_before_fill_seed_104729",
+      "check_id": "A01_LOOKAHEAD",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "decision_id": "decision-5",
+        "field": "close",
+        "row_number": 2,
+        "source_session": "2026-02-02",
+        "available_at": "2026-02-09T16:00:02+00:00",
+        "decision_at": "2026-02-09T16:00:01+00:00",
+        "entry_at": "2026-02-10T09:30:00+00:00"
+      }
+    },
+    {
+      "case_id": "equal_decision_boundary_seed_104729",
+      "check_id": "A01_LOOKAHEAD",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "decision_id": "decision-5",
+        "field": "close",
+        "row_number": 2,
+        "source_session": "2026-02-02",
+        "available_at": "2026-02-09T16:00:01+00:00",
+        "decision_at": "2026-02-09T16:00:01+00:00",
+        "entry_at": "2026-02-10T09:30:00+00:00"
+      }
+    },
+    {
+      "case_id": "missing_lineage_seed_104729",
+      "check_id": "A01_LOOKAHEAD",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "decision_id": "decision-5",
+        "reason": "Missing feature lineage"
+      }
+    },
+    {
+      "case_id": "explicit_costs_seed_104729",
+      "check_id": "A02_MISSING_COSTS",
+      "expected": "PASS",
+      "actual": "PASS",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "trade_count": 18,
+        "fee_bps_each_side": "5",
+        "slippage_bps_each_side": "5"
+      }
+    },
+    {
+      "case_id": "zero_costs_seed_104729",
+      "check_id": "A02_MISSING_COSTS",
+      "expected": "WARN",
+      "actual": "WARN",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "trade_count": 18,
+        "fee_bps_each_side": "0",
+        "slippage_bps_each_side": "0"
+      }
+    },
+    {
+      "case_id": "missing_open_seed_104729",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "row_number": 11,
+        "field": "open",
+        "reason": "Required value is missing"
+      }
+    },
+    {
+      "case_id": "duplicate_session_seed_104729",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 2,
+      "first_evidence": {
+        "row_number": 11,
+        "field": "date",
+        "reason": "Duplicate symbol/session key"
+      }
+    },
+    {
+      "case_id": "invalid_ohlc_seed_104729",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "row_number": 11,
+        "field": "OHLC",
+        "reason": "Prices violate low/open/close/high ordering"
+      }
+    },
+    {
+      "case_id": "negative_volume_seed_104729",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "row_number": 11,
+        "field": "volume",
+        "reason": "Value violates finite numeric bounds"
+      }
+    },
+    {
+      "case_id": "nonfinite_close_seed_104729",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "row_number": 11,
+        "field": "close",
+        "reason": "Value violates finite numeric bounds"
+      }
+    },
+    {
+      "case_id": "valid_data_seed_130363",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "PASS",
+      "actual": "PASS",
+      "passed": true,
+      "evidence_count": 0,
+      "first_evidence": null
+    },
+    {
+      "case_id": "lawful_timing_seed_130363",
+      "check_id": "A01_LOOKAHEAD",
+      "expected": "PASS",
+      "actual": "PASS",
+      "passed": true,
+      "evidence_count": 0,
+      "first_evidence": null
+    },
+    {
+      "case_id": "future_close_seed_130363",
+      "check_id": "A01_LOOKAHEAD",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 18,
+      "first_evidence": {
+        "decision_id": "decision-5",
+        "field": "close",
+        "row_number": 8,
+        "source_session": "2026-02-10",
+        "available_at": "2026-02-10T16:00:00+00:00",
+        "decision_at": "2026-02-09T16:00:01+00:00",
+        "entry_at": "2026-02-10T09:30:00+00:00"
+      }
+    },
+    {
+      "case_id": "after_decision_before_fill_seed_130363",
+      "check_id": "A01_LOOKAHEAD",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "decision_id": "decision-5",
+        "field": "close",
+        "row_number": 2,
+        "source_session": "2026-02-02",
+        "available_at": "2026-02-09T16:00:02+00:00",
+        "decision_at": "2026-02-09T16:00:01+00:00",
+        "entry_at": "2026-02-10T09:30:00+00:00"
+      }
+    },
+    {
+      "case_id": "equal_decision_boundary_seed_130363",
+      "check_id": "A01_LOOKAHEAD",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "decision_id": "decision-5",
+        "field": "close",
+        "row_number": 2,
+        "source_session": "2026-02-02",
+        "available_at": "2026-02-09T16:00:01+00:00",
+        "decision_at": "2026-02-09T16:00:01+00:00",
+        "entry_at": "2026-02-10T09:30:00+00:00"
+      }
+    },
+    {
+      "case_id": "missing_lineage_seed_130363",
+      "check_id": "A01_LOOKAHEAD",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "decision_id": "decision-5",
+        "reason": "Missing feature lineage"
+      }
+    },
+    {
+      "case_id": "explicit_costs_seed_130363",
+      "check_id": "A02_MISSING_COSTS",
+      "expected": "PASS",
+      "actual": "PASS",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "trade_count": 18,
+        "fee_bps_each_side": "5",
+        "slippage_bps_each_side": "5"
+      }
+    },
+    {
+      "case_id": "zero_costs_seed_130363",
+      "check_id": "A02_MISSING_COSTS",
+      "expected": "WARN",
+      "actual": "WARN",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "trade_count": 18,
+        "fee_bps_each_side": "0",
+        "slippage_bps_each_side": "0"
+      }
+    },
+    {
+      "case_id": "missing_open_seed_130363",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "row_number": 11,
+        "field": "open",
+        "reason": "Required value is missing"
+      }
+    },
+    {
+      "case_id": "duplicate_session_seed_130363",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 2,
+      "first_evidence": {
+        "row_number": 11,
+        "field": "date",
+        "reason": "Duplicate symbol/session key"
+      }
+    },
+    {
+      "case_id": "invalid_ohlc_seed_130363",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "row_number": 11,
+        "field": "OHLC",
+        "reason": "Prices violate low/open/close/high ordering"
+      }
+    },
+    {
+      "case_id": "negative_volume_seed_130363",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "row_number": 11,
+        "field": "volume",
+        "reason": "Value violates finite numeric bounds"
+      }
+    },
+    {
+      "case_id": "nonfinite_close_seed_130363",
+      "check_id": "A03_DATA_INTEGRITY",
+      "expected": "FAIL",
+      "actual": "FAIL",
+      "passed": true,
+      "evidence_count": 1,
+      "first_evidence": {
+        "row_number": 11,
+        "field": "close",
+        "reason": "Value violates finite numeric bounds"
+      }
+    }
+  ]
+}

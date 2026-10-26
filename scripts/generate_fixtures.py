@@ -24,8 +24,26 @@ def main():
         closing = closes[i]
         rows.append([session, "SYNTH", opening, max(opening, closing) + 1, min(opening, closing) - 1, closing, 100000])
     fields = ["date", "symbol", "open", "high", "low", "close", "volume"]
-    for identity in ("clean_momentum", "leaky_next_close", "missing_open", "duplicate_sessions", "invalid_ohlc"):
+    for identity in (
+        "clean_momentum",
+        "leaky_next_close",
+        "timing_trap",
+        "missing_open",
+        "duplicate_sessions",
+        "invalid_ohlc",
+    ):
         variant = [list(row) for row in rows]
+        if identity == "timing_trap":
+            # Alternating moves straddle the default threshold. Future-close
+            # selection and lawful trailing selection therefore choose different
+            # sessions. All returns are still computed by the same engine.
+            trap = [100, 100, 100, 100, 100, 100, 103, 99, 104, 98, 105, 97, 106, 96, 107, 95, 108, 94, 109, 93]
+            variant = []
+            for i, session in enumerate(dates):
+                opening, closing = trap[max(0, i - 1)], trap[i]
+                variant.append(
+                    [session, "SYNTH", opening, max(opening, closing) + 1, min(opening, closing) - 1, closing, 100000]
+                )
         if identity == "missing_open":
             variant[8][2] = ""
         if identity == "duplicate_sessions":
