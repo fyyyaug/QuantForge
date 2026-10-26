@@ -143,6 +143,19 @@ def test_out_of_scope_model_parameters_do_not_become_valid_plans(tmp_path, monke
         wire(answer("UNSUPPORTED", "SUPPORTED")),
         wire(answer("UNSUPPORTED", "UNSAFE_REQUEST", lookback_sessions=5)),
     ],
+    ids=[
+        "invalid-json",
+        "oversized-response",
+        "truncated-response",
+        "missing-tool-input",
+        "unexpected-content",
+        "extra-source-code",
+        "missing-parameters",
+        "plan-with-unsupported-reason",
+        "empty-clarification",
+        "unsupported-with-supported-reason",
+        "unsafe-with-parameters",
+    ],
 )
 def test_invalid_provider_output_fails_safely_without_breaking_template(tmp_path, monkeypatch, raw):
     provider = provider_with_response(monkeypatch, raw)
