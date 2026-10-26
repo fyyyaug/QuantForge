@@ -2,6 +2,10 @@
 
 Status: script and product flow prepared; no recorded video, external user study, public repository transition, or Devpost submission is claimed by this document.
 
+## Project cover
+
+The selected cover is [QuantForge — Question the curve](submission/quantforge-devpost-cover-v3.png): a 1536 × 1024 PNG in a 3:2 ratio, under the 5 MB Devpost image limit. Use it for the project thumbnail; keep actual application screenshots in the image gallery. The cover is conceptual artwork generated with the built-in imagegen tool. See [cover usage and prompt](submission/README.md).
+
 ## Two-minute recording script
 
 Use a fresh demo session and the real deployed build when available. Keep the synthetic and invalid-result labels visible. The suggested spoken script is in English for the event audience.

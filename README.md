@@ -1,5 +1,7 @@
 # QuantForge
 
+![QuantForge — Question the curve. Conceptual cover artwork.](docs/submission/quantforge-devpost-cover-v3.png)
+
 **Don't just generate a backtest. Challenge it.**
 
 New users: follow the [English User Guide](docs/USER_GUIDE.md) for Windows setup, demo access, the research workflow, and troubleshooting.
